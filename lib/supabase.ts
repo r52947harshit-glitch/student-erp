@@ -1,13 +1,27 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Public client - for client-side operations
+// Validate required environment variables
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+}
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
+}
+
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+}
+
+// Public client - for client-side operations (uses anon key)
 export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://hiivbgekplordkqyhkwf.supabase.co",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpaXZiZ2VrcGxvcmRrcXloa3dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjQxOTgsImV4cCI6MjA5MTI0MDE5OH0.2rhsui6qw0Ppi4fwQ8MgC6QsUqsfdsX0kiMQPwIHSPM"
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 // Admin client - for server-side operations only (bypasses RLS)
+// ⚠️ NEVER use this in client components or browser code
 export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://hiivbgekplordkqyhkwf.supabase.co",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
