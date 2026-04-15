@@ -1,31 +1,38 @@
 # Code Context Analysis
 
-Generated: 2026-04-15T16:46:03+05:30
+Generated: 2026-04-15T19:09:18+05:30
 Files Scanned: 40
 Analysis Tools: regex
 
 ## Security Summary
 
-**Total Issues: 2**
+**Total Issues: 3**
 
 - 🔴 CRITICAL: 0
 - 🟠 HIGH: 0
 - 🟡 MEDIUM: 0
-- 🟢 LOW: 2
+- 🟢 LOW: 3
 
 **Issues by Tool:**
-- regex: 2
+- regex: 3
 
 ---
 
 ## File: prisma\seed.ts
-Language: typescript | Tokens: 358 | Size: 1434 bytes
+Language: typescript | Tokens: 366 | Size: 1464 bytes
 
 **Imports:** @prisma/client, bcryptjs
 
 **⚠️ Security Issues:**
 
-🟢 **[LOW]** Line 54 - Debug Code
+🟢 **[LOW]** Line 8 - Debug Code
+   *Debug code or security TODO in production*
+   Tool: regex
+   ```
+   console.log(hashedPassword)
+   ```
+
+🟢 **[LOW]** Line 55 - Debug Code
    *Debug code or security TODO in production*
    Tool: regex
    ```
@@ -40,6 +47,7 @@ const prisma = new PrismaClient()
 
 async function main() {
   const hashedPassword = await bcrypt.hash('Admin@1234', 10)
+  console.log(hashedPassword)
   const teacherPassword = await bcrypt.hash('Teacher@1234', 10)
 
   // Seed Admin
@@ -863,7 +871,7 @@ export async function POST(req: Request) {
 ```
 
 ## File: app\api\payments\create-order\route.ts
-Language: typescript | Tokens: 613 | Size: 2454 bytes
+Language: typescript | Tokens: 613 | Size: 2452 bytes
 
 **Imports:** @/lib/logger, next/server, @/lib/prisma, @/lib/apiAuth, @/lib/razorpay, @/lib/validations, @/lib/prisma-error
 
@@ -936,7 +944,7 @@ export async function POST(request: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID // Safe to expose public key
+      key: "rzp_test_SdlHVeBzU3Jp0I" // Safe to expose public key
     })
 
   } catch (error: any) {
@@ -2265,7 +2273,7 @@ export function handlePrismaError(error: any, defaultMessage: string = "Internal
 ```
 
 ## File: lib\supabase.ts
-Language: typescript | Tokens: 109 | Size: 439 bytes
+Language: typescript | Tokens: 111 | Size: 446 bytes
 
 **Imports:** @supabase/supabase-js
 
@@ -2273,39 +2281,10 @@ Language: typescript | Tokens: 109 | Size: 439 bytes
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_ANON_KEY!
 
-// Public client — for reading public data
-export const supabase = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_ANON_KEY!
+export const supabase = createClient("https://hiivbgekplordkqyhkwf.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpaXZiZ2VrcGxvcmRrcXloa3dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjQxOTgsImV4cCI6MjA5MTI0MDE5OH0.2rhsui6qw0Ppi4fwQ8MgC6QsUqsfdsX0kiMQPwIHSPM"
 )
-
-// Admin client — for server-side file uploads (bypasses RLS)
-// NEVER use this in client components
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-```
-
-## File: lib\razorpay.ts
-Language: typescript | Tokens: 99 | Size: 399 bytes
-
-**Imports:** razorpay
-
-```typescript
-import Razorpay from 'razorpay'
-
-// Ensure we only initialize Razorpay if keys are available, to avoid crashing at build time
-const isRazorpayConfigured = !!process.env.RAZORPAY_KEY_ID && !!process.env.RAZORPAY_KEY_SECRET
-
-export const razorpay = isRazorpayConfigured
-  ? new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID!,
-      key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    })
-  : null
 
 ```
 
@@ -2340,6 +2319,23 @@ declare module "next-auth/jwt" {
 
 ```
 
+## File: lib\razorpay.ts
+Language: typescript | Tokens: 89 | Size: 357 bytes
+
+**Imports:** razorpay
+
+```typescript
+import Razorpay from 'razorpay'
+
+// Ensure we only initialize Razorpay if keys are available, to avoid crashing at build time
+const isRazorpayConfigured = !!process.env.RAZORPAY_KEY_ID && !!process.env.RAZORPAY_KEY_SECRET
+
+export const razorpay =  new Razorpay({
+      key_id: "rzp_test_SdlHVeBzU3Jp0I",
+      key_secret: "3umfMf725z5OOInWurShzmWh",
+    }) 
+```
+
 ## File: lib\prisma.ts
 Language: typescript | Tokens: 89 | Size: 359 bytes
 
@@ -2363,12 +2359,12 @@ if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma
 ```
 
 ## File: next-env.d.ts
-Language: typescript | Tokens: 62 | Size: 251 bytes
+Language: typescript | Tokens: 65 | Size: 262 bytes
 
 ```typescript
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
-import "./.next/dev/types/routes.d.ts";
+/// <reference path="./.next/types/routes.d.ts" />
 
 // NOTE: This file should not be edited
 // see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
@@ -2436,4 +2432,4 @@ export default config;
 
 **Summary:**
 - Files Included: 40 / 40
-- Total Tokens: 15415 / 10000000000
+- Total Tokens: 15418 / 10000000000

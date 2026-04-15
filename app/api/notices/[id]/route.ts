@@ -4,11 +4,12 @@ import { validateSession } from "@/lib/apiAuth"
 import { noticeSchema } from "@/lib/validations"
 import { handlePrismaError } from "@/lib/prisma-error"
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { errorResponse } = await validateSession(["ADMIN"])
   if (errorResponse) return errorResponse
 
   try {
+    const resolvedParams = await params
     const body = await request.json()
     const parseResult = noticeSchema.safeParse(body)
     
@@ -19,7 +20,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const { title, body: textBody, category, targetRole, scheduledAt } = parseResult.data
 
     const notice = await prisma.notice.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         title,
         body: textBody,
@@ -47,12 +48,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { errorResponse } = await validateSession(["ADMIN"])
   if (errorResponse) return errorResponse
 
   try {
-    await prisma.notice.delete({ where: { id: params.id } })
+    const resolvedParams = await params
+    await prisma.notice.delete({ where: { id: resolvedParams.id } })
 
     const { session } = await validateSession(["ADMIN"])
     if (session) {
@@ -60,7 +62,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
          data: {
            action: "NOTICE_DELETED",
            performedBy: session.user.id,
-           targetId: params.id,
+           targetId: resolvedParams.id,
            note: `Notice completely deleted`
          }
       })

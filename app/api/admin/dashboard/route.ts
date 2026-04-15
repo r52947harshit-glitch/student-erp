@@ -1,4 +1,4 @@
-import { logger } from "@/lib/logger"
+import logger from "@/lib/logger"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { startOfMonth, subMonths, format, startOfDay, endOfDay } from "date-fns"

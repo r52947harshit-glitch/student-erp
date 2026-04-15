@@ -4,22 +4,23 @@ import { validateSession } from "@/lib/apiAuth"
 import { studentSchema } from "@/lib/validations"
 import { handlePrismaError } from "@/lib/prisma-error"
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { errorResponse } = await validateSession(["ADMIN"])
   if (errorResponse) return errorResponse
 
   try {
+    const resolvedParams = await params
     const body = await request.json()
     const parseResult = studentSchema.safeParse(body)
 
     if (!parseResult.success) {
-      return NextResponse.json({ error: parseResult.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })
     }
 
     const { name, class: className, section, dob, parentName, contact, address, photoUrl } = parseResult.data
 
     const student = await prisma.student.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         class: className,
         section,

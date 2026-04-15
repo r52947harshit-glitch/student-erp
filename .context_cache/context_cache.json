@@ -297,11 +297,11 @@
   },
   "7a5adc421007fa7f945399ea3b646321": {
     "path": "lib\\razorpay.ts",
-    "content": "import Razorpay from 'razorpay'\n\n// Ensure we only initialize Razorpay if keys are available, to avoid crashing at build time\nconst isRazorpayConfigured = !!process.env.RAZORPAY_KEY_ID \u0026\u0026 !!process.env.RAZORPAY_KEY_SECRET\n\nexport const razorpay = isRazorpayConfigured\n  ? new Razorpay({\n      key_id: process.env.RAZORPAY_KEY_ID!,\n      key_secret: process.env.RAZORPAY_KEY_SECRET!,\n    })\n  : null\n",
+    "content": "import Razorpay from 'razorpay'\n\n// Ensure we only initialize Razorpay if keys are available, to avoid crashing at build time\nconst isRazorpayConfigured = !!process.env.RAZORPAY_KEY_ID \u0026\u0026 !!process.env.RAZORPAY_KEY_SECRET\n\nexport const razorpay =  new Razorpay({\n      key_id: \"rzp_test_SdlHVeBzU3Jp0I\",\n      key_secret: \"3umfMf725z5OOInWurShzmWh\",\n    }) ",
     "hash": "7a5adc421007fa7f945399ea3b646321",
-    "size": 399,
-    "tokens": 99,
-    "modified_time": "2026-04-09T00:44:30.4097347+05:30",
+    "size": 357,
+    "tokens": 89,
+    "modified_time": "2026-04-15T17:40:45.0161048+05:30",
     "language": "typescript",
     "imports": [
       "razorpay"
@@ -321,11 +321,11 @@
   },
   "851a32de12231f8730c311f253bc2076": {
     "path": "prisma\\seed.ts",
-    "content": "import { PrismaClient } from '@prisma/client'\nimport bcrypt from 'bcryptjs'\n\nconst prisma = new PrismaClient()\n\nasync function main() {\n  const hashedPassword = await bcrypt.hash('Admin@1234', 10)\n  const teacherPassword = await bcrypt.hash('Teacher@1234', 10)\n\n  // Seed Admin\n  const adminEntry = await prisma.user.upsert({\n    where: { email: 'admin@school.com' },\n    update: {},\n    create: {\n      email: 'admin@school.com',\n      name: 'System Admin',\n      password: hashedPassword,\n      role: 'ADMIN',\n    },\n  })\n  \n  // Seed Teacher\n  const teacherUser = await prisma.user.upsert({\n    where: { email: 'teacher@school.com' },\n    update: {},\n    create: {\n      email: 'teacher@school.com',\n      name: 'Jane Doe',\n      password: teacherPassword,\n      role: 'TEACHER',\n    },\n  })\n\n  await prisma.teacher.upsert({\n    where: { userId: teacherUser.id },\n    update: {},\n    create: {\n      userId: teacherUser.id,\n      assignedClasses: [\"Nursery\", \"1\", \"5\"] // Sample assigned classes\n    }\n  })\n\n  // Seed Notice\n  await prisma.notice.create({\n    data: {\n      title: \"Welcome to Teacher Portal\",\n      body: \"This is a global notice for teachers.\",\n      category: \"General\",\n      targetRole: \"TEACHER\",\n      postedBy: adminEntry.id\n    }\n  })\n\n  console.log('Seeding finished.')\n}\n\nmain()\n  .catch((e) =\u003e {\n    console.error(e)\n    process.exit(1)\n  })\n  .finally(async () =\u003e {\n    await prisma.$disconnect()\n  })\n",
+    "content": "import { PrismaClient } from '@prisma/client'\nimport bcrypt from 'bcryptjs'\n\nconst prisma = new PrismaClient()\n\nasync function main() {\n  const hashedPassword = await bcrypt.hash('Admin@1234', 10)\n  console.log(hashedPassword)\n  const teacherPassword = await bcrypt.hash('Teacher@1234', 10)\n\n  // Seed Admin\n  const adminEntry = await prisma.user.upsert({\n    where: { email: 'admin@school.com' },\n    update: {},\n    create: {\n      email: 'admin@school.com',\n      name: 'System Admin',\n      password: hashedPassword,\n      role: 'ADMIN',\n    },\n  })\n  \n  // Seed Teacher\n  const teacherUser = await prisma.user.upsert({\n    where: { email: 'teacher@school.com' },\n    update: {},\n    create: {\n      email: 'teacher@school.com',\n      name: 'Jane Doe',\n      password: teacherPassword,\n      role: 'TEACHER',\n    },\n  })\n\n  await prisma.teacher.upsert({\n    where: { userId: teacherUser.id },\n    update: {},\n    create: {\n      userId: teacherUser.id,\n      assignedClasses: [\"Nursery\", \"1\", \"5\"] // Sample assigned classes\n    }\n  })\n\n  // Seed Notice\n  await prisma.notice.create({\n    data: {\n      title: \"Welcome to Teacher Portal\",\n      body: \"This is a global notice for teachers.\",\n      category: \"General\",\n      targetRole: \"TEACHER\",\n      postedBy: adminEntry.id\n    }\n  })\n\n  console.log('Seeding finished.')\n}\n\nmain()\n  .catch((e) =\u003e {\n    console.error(e)\n    process.exit(1)\n  })\n  .finally(async () =\u003e {\n    await prisma.$disconnect()\n  })\n",
     "hash": "851a32de12231f8730c311f253bc2076",
-    "size": 1434,
-    "tokens": 358,
-    "modified_time": "2026-04-09T02:25:55.8850316+05:30",
+    "size": 1464,
+    "tokens": 366,
+    "modified_time": "2026-04-15T17:02:01.7218098+05:30",
     "language": "typescript",
     "imports": [
       "@prisma/client",
@@ -339,7 +339,17 @@
         "severity": "LOW",
         "type": "Debug Code",
         "description": "Debug code or security TODO in production",
-        "line": 54,
+        "line": 8,
+        "column": 0,
+        "file": "",
+        "code": "console.log(hashedPassword)",
+        "tool": "regex"
+      },
+      {
+        "severity": "LOW",
+        "type": "Debug Code",
+        "description": "Debug code or security TODO in production",
+        "line": 55,
         "column": 0,
         "file": "",
         "code": "console.log('Seeding finished.')",
@@ -363,11 +373,11 @@
   },
   "918ff48aaf2ce062fdd2b5e09a5535b7": {
     "path": "lib\\supabase.ts",
-    "content": "import { createClient } from '@supabase/supabase-js'\n\nconst supabaseUrl = process.env.SUPABASE_URL!\n\n// Public client — for reading public data\nexport const supabase = createClient(\n  supabaseUrl,\n  process.env.SUPABASE_ANON_KEY!\n)\n\n// Admin client — for server-side file uploads (bypasses RLS)\n// NEVER use this in client components\nexport const supabaseAdmin = createClient(\n  supabaseUrl,\n  process.env.SUPABASE_SERVICE_ROLE_KEY!\n)\n",
+    "content": "import { createClient } from '@supabase/supabase-js'\n\nconst supabaseUrl = process.env.SUPABASE_URL!\nconst supabaseKey = process.env.SUPABASE_ANON_KEY!\n\nexport const supabase = createClient(\"https://hiivbgekplordkqyhkwf.supabase.co\", \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpaXZiZ2VrcGxvcmRrcXloa3dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjQxOTgsImV4cCI6MjA5MTI0MDE5OH0.2rhsui6qw0Ppi4fwQ8MgC6QsUqsfdsX0kiMQPwIHSPM\"\n)\n",
     "hash": "918ff48aaf2ce062fdd2b5e09a5535b7",
-    "size": 439,
-    "tokens": 109,
-    "modified_time": "2026-04-15T16:20:07.8835229+05:30",
+    "size": 446,
+    "tokens": 111,
+    "modified_time": "2026-04-15T17:58:27.4981784+05:30",
     "language": "typescript",
     "imports": [
       "@supabase/supabase-js"
@@ -432,11 +442,11 @@
   },
   "a80b58c3c633690e9e14d57aa03941d3": {
     "path": "next-env.d.ts",
-    "content": "/// \u003creference types=\"next\" /\u003e\n/// \u003creference types=\"next/image-types/global\" /\u003e\nimport \"./.next/dev/types/routes.d.ts\";\n\n// NOTE: This file should not be edited\n// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.\n",
+    "content": "/// \u003creference types=\"next\" /\u003e\n/// \u003creference types=\"next/image-types/global\" /\u003e\n/// \u003creference path=\"./.next/types/routes.d.ts\" /\u003e\n\n// NOTE: This file should not be edited\n// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.\n",
     "hash": "a80b58c3c633690e9e14d57aa03941d3",
-    "size": 251,
-    "tokens": 62,
-    "modified_time": "2026-04-15T15:28:16.3053839+05:30",
+    "size": 262,
+    "tokens": 65,
+    "modified_time": "2026-04-15T16:54:22.3974308+05:30",
     "language": "typescript",
     "imports": [],
     "functions": []
@@ -675,11 +685,11 @@
   },
   "ff32abf32e9ac1e40ee11bd87f751944": {
     "path": "app\\api\\payments\\create-order\\route.ts",
-    "content": "import logger from \"@/lib/logger\"\nimport { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { razorpay } from \"@/lib/razorpay\"\nimport { paymentSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  if (!razorpay) {\n    return NextResponse.json({ error: \"Razorpay is not configured on the server.\" }, { status: 503 })\n  }\n\n  try {\n    const body = await request.json()\n    const parseResult = paymentSchema.safeParse(body)\n    \n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n\n    const { amount, type } = parseResult.data\n\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id }\n    })\n    if (!student) return NextResponse.json({ error: \"Student not found\" }, { status: 404 })\n\n    // Rate Limiting: 3 orders per minute per student\n    const oneMinuteAgo = new Date(Date.now() - 60000)\n    const recentOrdersCount = await prisma.payment.count({\n      where: {\n        studentId: student.id,\n        createdAt: { gte: oneMinuteAgo }\n      }\n    })\n\n    if (recentOrdersCount \u003e= 3) {\n      return NextResponse.json({ error: \"Too many payment attempts. Please wait a minute before trying again.\" }, { status: 429 })\n    }\n\n    // Create Order with Razorpay SDK\n    const orderOptions = {\n      amount: Math.round(amount * 100), // convert to smallest currency unit (paise)\n      currency: \"INR\",\n      receipt: `rcpt_${student.rollNo}_${Date.now()}`\n    }\n\n    const order = await razorpay.orders.create(orderOptions)\n\n    // Log the intended checkout constraint in Prisma locked explicitly to this student\n    await prisma.payment.create({\n      data: {\n        studentId: student.id,\n        razorpayOrderId: order.id,\n        amount: amount,\n        type: type,\n        status: \"PENDING\"\n      }\n    })\n\n    return NextResponse.json({\n      orderId: order.id,\n      amount: order.amount,\n      currency: order.currency,\n      key: process.env.RAZORPAY_KEY_ID // Safe to expose public key\n    })\n\n  } catch (error: any) {\n    logger.error(\"Payment Flow Error:\", error)\n    return handlePrismaError(error, \"Failed to initialize payment gateway\")\n  }\n}\n\n",
+    "content": "import logger from \"@/lib/logger\"\nimport { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { razorpay } from \"@/lib/razorpay\"\nimport { paymentSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  if (!razorpay) {\n    return NextResponse.json({ error: \"Razorpay is not configured on the server.\" }, { status: 503 })\n  }\n\n  try {\n    const body = await request.json()\n    const parseResult = paymentSchema.safeParse(body)\n    \n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n\n    const { amount, type } = parseResult.data\n\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id }\n    })\n    if (!student) return NextResponse.json({ error: \"Student not found\" }, { status: 404 })\n\n    // Rate Limiting: 3 orders per minute per student\n    const oneMinuteAgo = new Date(Date.now() - 60000)\n    const recentOrdersCount = await prisma.payment.count({\n      where: {\n        studentId: student.id,\n        createdAt: { gte: oneMinuteAgo }\n      }\n    })\n\n    if (recentOrdersCount \u003e= 3) {\n      return NextResponse.json({ error: \"Too many payment attempts. Please wait a minute before trying again.\" }, { status: 429 })\n    }\n\n    // Create Order with Razorpay SDK\n    const orderOptions = {\n      amount: Math.round(amount * 100), // convert to smallest currency unit (paise)\n      currency: \"INR\",\n      receipt: `rcpt_${student.rollNo}_${Date.now()}`\n    }\n\n    const order = await razorpay.orders.create(orderOptions)\n\n    // Log the intended checkout constraint in Prisma locked explicitly to this student\n    await prisma.payment.create({\n      data: {\n        studentId: student.id,\n        razorpayOrderId: order.id,\n        amount: amount,\n        type: type,\n        status: \"PENDING\"\n      }\n    })\n\n    return NextResponse.json({\n      orderId: order.id,\n      amount: order.amount,\n      currency: order.currency,\n      key: \"rzp_test_SdlHVeBzU3Jp0I\" // Safe to expose public key\n    })\n\n  } catch (error: any) {\n    logger.error(\"Payment Flow Error:\", error)\n    return handlePrismaError(error, \"Failed to initialize payment gateway\")\n  }\n}\n\n",
     "hash": "ff32abf32e9ac1e40ee11bd87f751944",
-    "size": 2454,
+    "size": 2452,
     "tokens": 613,
-    "modified_time": "2026-04-15T15:24:04.8741051+05:30",
+    "modified_time": "2026-04-15T17:38:32.5974986+05:30",
     "language": "typescript",
     "imports": [
       "@/lib/logger",

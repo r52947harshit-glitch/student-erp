@@ -4,12 +4,13 @@ import { validateSession } from "@/lib/apiAuth"
 
 export async function GET(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   const { errorResponse, session } = await validateSession(["STUDENT"])
   if (errorResponse) return errorResponse
 
   try {
+    const resolvedParams = await params
     const student = await prisma.student.findUnique({
       where: { userId: session.user.id }
     })
@@ -17,7 +18,7 @@ export async function GET(
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
 
     const payment = await prisma.payment.findUnique({
-      where: { razorpayOrderId: params.orderId }
+      where: { razorpayOrderId: resolvedParams.orderId }
     })
 
     if (!payment) return NextResponse.json({ error: "Order not found" }, { status: 404 })

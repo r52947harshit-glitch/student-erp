@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const parseResult = noticeSchema.safeParse(body)
     
     if (!parseResult.success) {
-      return NextResponse.json({ error: parseResult.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })
     }
 
     const { title, body: textBody, category, targetRole, scheduledAt } = parseResult.data

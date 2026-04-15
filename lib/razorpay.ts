@@ -1,9 +1,7 @@
 import Razorpay from 'razorpay'
 
-// Ensure we only initialize Razorpay if keys are available, to avoid crashing at build time
-const isRazorpayConfigured = !!process.env.RAZORPAY_KEY_ID && !!process.env.RAZORPAY_KEY_SECRET
-
-export const razorpay =  new Razorpay({
-      key_id: "rzp_test_SdlHVeBzU3Jp0I",
-      key_secret: "3umfMf725z5OOInWurShzmWh",
-    }) 
+// Initialize Razorpay with test keys (replace with production keys in production)
+export const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_SdlHVeBzU3Jp0I",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "3umfMf725z5OOInWurShzmWh",
+}) 
