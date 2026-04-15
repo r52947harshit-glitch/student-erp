@@ -1,0 +1,697 @@
+{
+  "03110bbd82b261cb3705ed10a45d9ca9": {
+    "path": "app\\api\\payments\\status\\[orderId]\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function GET(\n  request: Request,\n  { params }: { params: { orderId: string } }\n) {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id }\n    })\n\n    if (!student) return NextResponse.json({ error: \"Student not found\" }, { status: 404 })\n\n    const payment = await prisma.payment.findUnique({\n      where: { razorpayOrderId: params.orderId }\n    })\n\n    if (!payment) return NextResponse.json({ error: \"Order not found\" }, { status: 404 })\n\n    // SECURITY: Ensure payment belongs to this student\n    if (payment.studentId !== student.id) {\n      return NextResponse.json({ error: \"Unauthorized\" }, { status: 403 })\n    }\n\n    return NextResponse.json({\n      status: payment.status,\n      razorpayPaymentId: payment.razorpayPaymentId,\n      verifiedAt: payment.verifiedAt,\n      amount: payment.amount,\n      type: payment.type\n    })\n  } catch (error) {\n    return NextResponse.json({ error: \"Server Error\" }, { status: 500 })\n  }\n}\n",
+    "hash": "03110bbd82b261cb3705ed10a45d9ca9",
+    "size": 1242,
+    "tokens": 310,
+    "modified_time": "2026-04-15T00:03:21.0823839+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "0b07dda55bd75a65ba2fbaaa284a1820": {
+    "path": "next.config.mjs",
+    "content": "/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  allowedDevOrigins: ['192.168.1.2', '192.168.1.*'],\n};\n\nexport default nextConfig;\n",
+    "hash": "0b07dda55bd75a65ba2fbaaa284a1820",
+    "size": 146,
+    "tokens": 36,
+    "modified_time": "2026-04-15T15:34:07.9782678+05:30",
+    "language": "javascript",
+    "imports": [],
+    "functions": []
+  },
+  "1304ef86e632a6be1af15b5ab00ec6c3": {
+    "path": "lib\\utils.ts",
+    "content": "import { clsx, type ClassValue } from \"clsx\"\nimport { twMerge } from \"tailwind-merge\"\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs))\n}\n",
+    "hash": "1304ef86e632a6be1af15b5ab00ec6c3",
+    "size": 166,
+    "tokens": 41,
+    "modified_time": "2026-04-09T00:35:53.9897706+05:30",
+    "language": "typescript",
+    "imports": [
+      "clsx",
+      "tailwind-merge"
+    ],
+    "functions": [
+      "cn"
+    ]
+  },
+  "179c576e20c1c9fe252d6172e4458c3a": {
+    "path": "proxy.ts",
+    "content": "import { auth } from \"@/lib/auth\"\nimport { NextResponse } from \"next/server\"\nimport type { NextRequest } from \"next/server\"\n\nexport async function proxy(request: NextRequest) {\n  const session = await auth()\n  const { nextUrl } = request\n  const isLoggedIn = !!session\n  const role = session?.user?.role?.toLowerCase()\n\n  const isAuthRoute = nextUrl.pathname.startsWith(\"/login\")\n  const isProtected = nextUrl.pathname.startsWith(\"/student\") || \n                      nextUrl.pathname.startsWith(\"/teacher\") || \n                      nextUrl.pathname.startsWith(\"/admin\")\n\n  // Redirect logged-in users away from auth routes to their dashboards\n  if (isAuthRoute) {\n    if (isLoggedIn) {\n      return NextResponse.redirect(new URL(`/${role}/dashboard`, nextUrl))\n    }\n    return null\n  }\n\n  // Protect private routes\n  if (isProtected) {\n    if (!isLoggedIn) {\n      return NextResponse.redirect(new URL(\"/login\", nextUrl))\n    }\n\n    // Role-based route bounding\n    if (nextUrl.pathname.startsWith(\"/admin\") \u0026\u0026 role !== \"admin\") {\n      return NextResponse.redirect(new URL(`/${role}/dashboard`, nextUrl))\n    }\n    if (nextUrl.pathname.startsWith(\"/student\") \u0026\u0026 role !== \"student\") {\n      return NextResponse.redirect(new URL(`/${role}/dashboard`, nextUrl))\n    }\n    if (nextUrl.pathname.startsWith(\"/teacher\") \u0026\u0026 role !== \"teacher\") {\n      return NextResponse.redirect(new URL(`/${role}/dashboard`, nextUrl))\n    }\n  }\n\n  return NextResponse.next()\n}\n\n// Specify which routes this proxy runs on\nexport const config = {\n  matcher: [\"/((?!api|_next/static|_next/image|favicon.ico).*)\"],\n}\n",
+    "hash": "179c576e20c1c9fe252d6172e4458c3a",
+    "size": 1595,
+    "tokens": 398,
+    "modified_time": "2026-04-15T15:33:55.1524458+05:30",
+    "language": "typescript",
+    "imports": [
+      "@/lib/auth",
+      "next/server",
+      "next/server"
+    ],
+    "functions": [
+      "proxy"
+    ]
+  },
+  "17f775b93681731ce4b74833ea7ded4e": {
+    "path": "middleware.ts",
+    "content": "import { withAuth } from \"next-auth/middleware\"\nimport { NextResponse } from \"next/server\"\n\nexport default withAuth(\n  function middleware(req) {\n    const token = req.nextauth.token\n    const pathname = req.nextUrl.pathname\n    const role = token?.role as string | undefined\n\n    // Role-based redirect if accessing wrong portal\n    if (pathname.startsWith(\"/admin\") \u0026\u0026 role !== \"ADMIN\") {\n      return NextResponse.redirect(\n        new URL(`/${role?.toLowerCase()}/dashboard`, req.url)\n      )\n    }\n    if (pathname.startsWith(\"/teacher\") \u0026\u0026 role !== \"TEACHER\") {\n      return NextResponse.redirect(\n        new URL(`/${role?.toLowerCase()}/dashboard`, req.url)\n      )\n    }\n    if (pathname.startsWith(\"/student\") \u0026\u0026 role !== \"STUDENT\") {\n      return NextResponse.redirect(\n        new URL(`/${role?.toLowerCase()}/dashboard`, req.url)\n      )\n    }\n\n    return NextResponse.next()\n  },\n  {\n    callbacks: {\n      authorized({ token, req }) {\n        const pathname = req.nextUrl.pathname\n        // Public routes\n        if (pathname === \"/login\" || pathname === \"/\") return true\n        // All other routes need a valid token\n        return !!token\n      },\n    },\n  }\n)\n\nexport const config = {\n  matcher: [\n    \"/((?!api/auth|api/payments/webhook|_next/static|_next/image|favicon.ico).*)\",\n  ],\n}\n",
+    "hash": "17f775b93681731ce4b74833ea7ded4e",
+    "size": 1308,
+    "tokens": 327,
+    "modified_time": "2026-04-15T16:33:18.6277001+05:30",
+    "language": "typescript",
+    "imports": [
+      "next-auth/middleware",
+      "next/server"
+    ],
+    "functions": [
+      "middleware"
+    ]
+  },
+  "1aec43de30c4a671667d12acdc5df74a": {
+    "path": "lib\\logger.ts",
+    "content": "const logger = {\r\n  info: (...args: unknown[]) =\u003e console.log('[INFO]', ...args),\r\n  error: (...args: unknown[]) =\u003e console.error('[ERROR]', ...args),\r\n  warn: (...args: unknown[]) =\u003e console.warn('[WARN]', ...args),\r\n};\r\n\r\nexport default logger;\r\n",
+    "hash": "1aec43de30c4a671667d12acdc5df74a",
+    "size": 248,
+    "tokens": 62,
+    "modified_time": "2026-04-15T15:21:30.5355314+05:30",
+    "language": "typescript",
+    "imports": [],
+    "functions": [],
+    "security": [
+      {
+        "severity": "LOW",
+        "type": "Debug Code",
+        "description": "Debug code or security TODO in production",
+        "line": 2,
+        "column": 0,
+        "file": "",
+        "code": "info: (...args: unknown[]) =\u003e console.log('[INFO]', ...args),",
+        "tool": "regex"
+      }
+    ]
+  },
+  "1ecaa68d925c1b663f0757271b49e64f": {
+    "path": "app\\api\\students\\[id]\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { studentSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function PUT(request: Request, { params }: { params: { id: string } }) {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const body = await request.json()\n    const parseResult = studentSchema.safeParse(body)\n\n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.errors[0].message }, { status: 400 })\n    }\n\n    const { name, class: className, section, dob, parentName, contact, address, photoUrl } = parseResult.data\n\n    const student = await prisma.student.update({\n      where: { id: params.id },\n      data: {\n        class: className,\n        section,\n        parentName,\n        contact,\n        address,\n        ...(photoUrl \u0026\u0026 { photoUrl }),\n        ...(dob \u0026\u0026 { dob: new Date(dob) }),\n        user: {\n          update: { name }\n        }\n      },\n      include: { user: { select: { name: true } } }\n    })\n\n    const { session } = await validateSession([\"ADMIN\"])\n    if (session) {\n      await prisma.auditLog.create({\n        data: {\n          action: \"STUDENT_UPDATED\",\n          performedBy: session.user.id,\n          targetId: student.id,\n          note: `Updated student details for ${student.rollNo}`\n        }\n      })\n    }\n\n    return NextResponse.json(student)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to update student\")\n  }\n}\n",
+    "hash": "1ecaa68d925c1b663f0757271b49e64f",
+    "size": 1626,
+    "tokens": 406,
+    "modified_time": "2026-04-15T01:27:36.0108247+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/validations",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "PUT"
+    ]
+  },
+  "28f31dc0f23624e5428dd528918f92cf": {
+    "path": "app\\api\\fee\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { feeStructureSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function GET() {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n  const structures = await prisma.feeStructure.findMany({ orderBy: { class: 'asc' } })\n  return NextResponse.json(structures)\n}\n\nexport async function POST(request: Request) {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n  \n  try {\n    const body = await request.json()\n    // Parse numeric fields properly (fee structures pass amounts occasionally as strings from UI)\n    const payload = { ...body, amount: typeof body.amount === 'string' ? parseFloat(body.amount) : body.amount }\n    const parseResult = feeStructureSchema.safeParse(payload)\n\n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n\n    const { class: className, type, amount, dueDate } = parseResult.data\n\n    const fee = await prisma.feeStructure.create({\n      data: { class: className, type, amount, dueDate: new Date(dueDate) }\n    })\n\n    const { session } = await validateSession([\"ADMIN\"])\n    if (session) {\n      await prisma.auditLog.create({\n         data: {\n           action: \"FEE_STRUCTURE_CREATED\",\n           performedBy: session.user.id,\n           targetId: fee.id,\n           note: `Created fee structure ${type} for Class ${className}`\n         }\n      })\n    }\n\n    return NextResponse.json(fee)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to create fee structure\")\n  }\n}\n",
+    "hash": "28f31dc0f23624e5428dd528918f92cf",
+    "size": 1792,
+    "tokens": 448,
+    "modified_time": "2026-04-15T15:23:41.1077966+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/validations",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "GET",
+      "POST"
+    ]
+  },
+  "3231a205f9f91abf23b5a9115f214c1d": {
+    "path": "lib\\validations.ts",
+    "content": "import { z } from \"zod\"\n\nexport const studentSchema = z.object({\n  name: z.string().min(2, \"Name must be at least 2 characters\").max(100),\n  class: z.string().min(1, \"Class is required\"),\n  section: z.string().min(1, \"Section is required\").max(10),\n  dob: z.string().refine(val =\u003e !isNaN(Date.parse(val)), { message: \"Invalid Date of Birth\" }),\n  parentName: z.string().min(2, \"Parent name must be at least 2 characters\").max(100),\n  contact: z.string().min(10, \"Contact must be exactly 10 digits\").max(10), // Simplistic assumption\n  address: z.string().min(5, \"Address must be at least 5 characters\").max(255),\n  photoUrl: z.string().url().optional()\n})\n\nexport const feeStructureSchema = z.object({\n  class: z.string().min(1, \"Class is required\"),\n  type: z.string().min(2, \"Fee type is required\"),\n  amount: z.number().positive(\"Amount must be greater than zero\"),\n  dueDate: z.string().refine(val =\u003e !isNaN(Date.parse(val)), { message: \"Invalid Due Date\" })\n})\n\nexport const noticeSchema = z.object({\n  title: z.string().min(3, \"Title must be at least 3 characters\").max(150),\n  body: z.string().min(10, \"Content must be at least 10 characters\"),\n  category: z.string().min(1, \"Category is required\"),\n  targetRole: z.enum([\"ALL\", \"STUDENT\", \"TEACHER\"]),\n  scheduledAt: z.string().optional()\n})\n\nexport const attendanceSchema = z.object({\n  date: z.string().refine(val =\u003e !isNaN(Date.parse(val)), { message: \"Invalid Date\" }),\n  attendanceList: z.array(z.object({\n    studentId: z.string().min(1),\n    status: z.enum([\"PRESENT\", \"ABSENT\", \"LEAVE\"])\n  })).min(1, \"Attendance list cannot be empty\")\n})\n\nexport const resultBulkSchema = z.array(z.object({\n  studentId: z.string().min(1),\n  subject: z.string().min(2),\n  examType: z.enum([\"UNIT_TEST\", \"HALF_YEARLY\", \"ANNUAL\"]),\n  marksObtained: z.number().min(0, \"Marks cannot be negative\"),\n  totalMarks: z.number().positive(\"Total marks must be greater than zero\"),\n  editReason: z.string().optional()\n})).min(1, \"Results payload cannot be empty\")\n\nexport const paymentSchema = z.object({\n  amount: z.number().positive(\"Payment amount must be greater than zero\"),\n  type: z.string().min(2, \"Fee type is required\")\n})\n",
+    "hash": "3231a205f9f91abf23b5a9115f214c1d",
+    "size": 2170,
+    "tokens": 542,
+    "modified_time": "2026-04-15T15:24:38.1234791+05:30",
+    "language": "typescript",
+    "imports": [
+      "zod"
+    ],
+    "functions": []
+  },
+  "353065b4b813358cf07cfa07a49d88c8": {
+    "path": "app\\api\\notices\\[id]\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { noticeSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function PUT(request: Request, { params }: { params: { id: string } }) {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const body = await request.json()\n    const parseResult = noticeSchema.safeParse(body)\n    \n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n\n    const { title, body: textBody, category, targetRole, scheduledAt } = parseResult.data\n\n    const notice = await prisma.notice.update({\n      where: { id: params.id },\n      data: {\n        title,\n        body: textBody,\n        category,\n        targetRole,\n        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,\n      }\n    })\n\n    const { session } = await validateSession([\"ADMIN\"])\n    if (session) {\n      await prisma.auditLog.create({\n         data: {\n           action: \"NOTICE_UPDATED\",\n           performedBy: session.user.id,\n           targetId: notice.id,\n           note: `Updated Notice: ${title}`\n         }\n      })\n    }\n\n    return NextResponse.json(notice)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to update notice\")\n  }\n}\n\nexport async function DELETE(request: Request, { params }: { params: { id: string } }) {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    await prisma.notice.delete({ where: { id: params.id } })\n\n    const { session } = await validateSession([\"ADMIN\"])\n    if (session) {\n      await prisma.auditLog.create({\n         data: {\n           action: \"NOTICE_DELETED\",\n           performedBy: session.user.id,\n           targetId: params.id,\n           note: `Notice completely deleted`\n         }\n      })\n    }\n\n    return NextResponse.json({ success: true })\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to delete notice\")\n  }\n}\n",
+    "hash": "353065b4b813358cf07cfa07a49d88c8",
+    "size": 2156,
+    "tokens": 539,
+    "modified_time": "2026-04-15T15:23:50.539619+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/validations",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "PUT",
+      "DELETE"
+    ]
+  },
+  "36dc66cd94a4929bc9c4dc8549e579cc": {
+    "path": "app\\api\\admin\\dashboard\\route.ts",
+    "content": "import { logger } from \"@/lib/logger\"\nimport { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { startOfMonth, subMonths, format, startOfDay, endOfDay } from \"date-fns\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function GET() {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    // 1. Total Active Students\n    const totalStudents = await prisma.student.count({\n      where: { user: { isActive: true } }\n    })\n\n    // 2. Fee Collected This Month\n    const thisMonthStart = startOfMonth(new Date())\n    const feeCollectedResult = await prisma.payment.aggregate({\n      where: {\n        status: \"PAID\",\n        verifiedAt: { gte: thisMonthStart }\n      },\n      _sum: { amount: true }\n    })\n    const feeCollected = feeCollectedResult._sum.amount || 0\n\n    // 3. Pending Fee Count (Unique students with pending payments)\n    const pendingPayments = await prisma.payment.findMany({\n      where: { status: \"PENDING\" },\n      select: { studentId: true },\n      distinct: ['studentId']\n    })\n    const pendingFeeCount = pendingPayments.length\n\n    // 4. Attendance Marked Today\n    const todayStart = startOfDay(new Date())\n    const todayEnd = endOfDay(new Date())\n    \n    const attendanceStats = await prisma.attendance.groupBy({\n      by: ['status'],\n      where: {\n        date: { gte: todayStart, lte: todayEnd }\n      },\n      _count: true\n    })\n    \n    let attendanceSummary = \"No\"\n    if (attendanceStats.length \u003e 0) {\n      const sum = attendanceStats.reduce((acc, curr) =\u003e acc + curr._count, 0)\n      attendanceSummary = `Yes (${sum} records)`\n    }\n\n    // Chart 1: Bar chart - Monthly fee collection (last 6 months)\n    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5))\n    const paymentsLast6Months = await prisma.payment.findMany({\n      where: {\n        status: \"PAID\",\n        verifiedAt: { gte: sixMonthsAgo }\n      },\n      select: { amount: true, verifiedAt: true }\n    })\n\n    const monthlyDataMap = new Map()\n    for (let i = 5; i \u003e= 0; i--) {\n      const m = startOfMonth(subMonths(new Date(), i))\n      monthlyDataMap.set(format(m, 'MMM yyyy'), 0)\n    }\n\n    paymentsLast6Months.forEach(payment =\u003e {\n      if (payment.verifiedAt) {\n        const month = format(payment.verifiedAt, 'MMM yyyy')\n        if (monthlyDataMap.has(month)) {\n          monthlyDataMap.set(month, monthlyDataMap.get(month) + payment.amount)\n        }\n      }\n    })\n\n    const feeCollectionChart = Array.from(monthlyDataMap.keys()).map(key =\u003e ({\n      name: key,\n      total: monthlyDataMap.get(key)\n    }))\n\n    // Chart 2: Pie chart - Student count per class\n    const studentsPerClass = await prisma.student.groupBy({\n      by: ['class'],\n      where: { user: { isActive: true } },\n      _count: true\n    })\n\n    const classDistributionChart = studentsPerClass.map(item =\u003e ({\n      name: item.class,\n      value: item._count\n    }))\n\n    return NextResponse.json({\n      metrics: {\n        totalStudents,\n        feeCollected,\n        pendingFeeCount,\n        attendanceSummary\n      },\n      charts: {\n        feeCollection: feeCollectionChart,\n        classDistribution: classDistributionChart\n      }\n    })\n  } catch (error) {\n    logger.error(\"Dashboard API Error:\", error)\n    return NextResponse.json({ error: \"Internal Server Error\" }, { status: 500 })\n  }\n}\n\r\n",
+    "hash": "36dc66cd94a4929bc9c4dc8549e579cc",
+    "size": 3394,
+    "tokens": 848,
+    "modified_time": "2026-04-15T00:45:41.2763896+05:30",
+    "language": "typescript",
+    "imports": [
+      "@/lib/logger",
+      "next/server",
+      "@/lib/prisma",
+      "date-fns",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "4f9e41e4fe528d0dc2a9339a34c9689b": {
+    "path": "app\\api\\attendance\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { attendanceSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\nimport { startOfDay, endOfDay } from \"date-fns\"\n\nexport async function GET(request: Request) {\n  const { errorResponse, session } = await validateSession([\"TEACHER\", \"ADMIN\"])\n  if (errorResponse || !session) return errorResponse || NextResponse.json({ error: \"Unauthorized\" }, { status: 401 })\n\n  const { searchParams } = new URL(request.url)\n  const className = searchParams.get('class')\n  const dateStr = searchParams.get('date')\n\n  if (!className || !dateStr) return NextResponse.json({ error: \"Missing parameters\" }, { status: 400 })\n\n  if (session.user.role === \"TEACHER\") {\n    const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })\n    if (!teacher?.assignedClasses.includes(className)) {\n      return NextResponse.json({ error: \"Unauthorized access to this class\" }, { status: 403 })\n    }\n  }\n\n  const targetDate = new Date(dateStr)\n  const start = startOfDay(targetDate)\n  const end = endOfDay(targetDate)\n\n  try {\n    // We check if there are any attendance records for the given class+date\n    const records = await prisma.attendance.findMany({\n      where: {\n        date: { gte: start, lte: end },\n        student: { class: className }\n      },\n      include: {\n        student: { select: { rollNo: true, user: { select: { name: true } } } }\n      }\n    })\n\n    return NextResponse.json({ isSubmitted: records.length \u003e 0, records })\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to verify attendance status\")\n  }\n}\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"TEACHER\", \"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const body = await request.json()\n    const parseResult = attendanceSchema.safeParse(body)\n    \n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n    \n    const { date, attendanceList } = parseResult.data\n\n    const payloadDate = new Date(date)\n\n    if (session.user.role === \"TEACHER\") {\n      const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })\n      \n      // Verify first student's class to ensure teacher is assigned to it\n      const sampleStudent = await prisma.student.findUnique({\n        where: { id: attendanceList[0].studentId },\n        select: { class: true }\n      })\n      \n      if (!sampleStudent || !teacher?.assignedClasses.includes(sampleStudent.class)) {\n        return NextResponse.json({ error: \"Unauthorized to mark attendance for this class\" }, { status: 403 })\n      }\n    }\n\n    // UPSERT all to gracefully handle dupes, though logic says \"cannot resubmit\"\n    const results = await prisma.$transaction(\n      attendanceList.map((record: any) =\u003e \n        prisma.attendance.upsert({\n          where: {\n            studentId_date: {\n              studentId: record.studentId,\n              date: payloadDate\n            }\n          },\n          update: {\n            status: record.status,\n            markedBy: session.user.id\n          },\n          create: {\n            studentId: record.studentId,\n            date: payloadDate,\n            status: record.status,\n            markedBy: session.user.id\n          }\n        })\n      )\n    )\n\n    return NextResponse.json({ success: true, count: results.length })\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to submit attendance\")\n  }\n}\n",
+    "hash": "4f9e41e4fe528d0dc2a9339a34c9689b",
+    "size": 3656,
+    "tokens": 914,
+    "modified_time": "2026-04-15T15:23:31.4134853+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/validations",
+      "@/lib/prisma-error",
+      "date-fns"
+    ],
+    "functions": [
+      "GET",
+      "POST"
+    ]
+  },
+  "64259b534fc7c9bd59040ab393561c6a": {
+    "path": "lib\\rateLimit.ts",
+    "content": "const rateLimitMap = new Map\u003cstring, { count: number; windowStart: number }\u003e()\n\ninterface RateLimitConfig {\n  limit: number\n  windowMs: number\n}\n\n// In-memory generic rate limiter designed for standard rapid API constraints (e.g. 60/min)\nexport function checkRateLimit(identifier: string, config: RateLimitConfig): { success: boolean, remaining: number } {\n  const now = Date.now()\n  const record = rateLimitMap.get(identifier)\n\n  if (!record) {\n    rateLimitMap.set(identifier, { count: 1, windowStart: now })\n    return { success: true, remaining: config.limit - 1 }\n  }\n\n  // If window has passed, reset counter\n  if (now - record.windowStart \u003e config.windowMs) {\n    rateLimitMap.set(identifier, { count: 1, windowStart: now })\n    return { success: true, remaining: config.limit - 1 }\n  }\n\n  // If within window, increment\n  if (record.count \u003c config.limit) {\n    rateLimitMap.set(identifier, { count: record.count + 1, windowStart: record.windowStart })\n    return { success: true, remaining: config.limit - record.count - 1 }\n  }\n\n  // Limit exceeded\n  return { success: false, remaining: 0 }\n}\n",
+    "hash": "64259b534fc7c9bd59040ab393561c6a",
+    "size": 1102,
+    "tokens": 275,
+    "modified_time": "2026-04-15T00:12:26.7030237+05:30",
+    "language": "typescript",
+    "imports": [],
+    "functions": [
+      "checkRateLimit"
+    ]
+  },
+  "74f062487590005c3bc47bf3f21d385f": {
+    "path": "app\\api\\attendance\\students\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function GET(request: Request) {\n  const { errorResponse } = await validateSession([\"TEACHER\", \"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  const { searchParams } = new URL(request.url)\n  const className = searchParams.get('class')\n\n  if (!className) return NextResponse.json({ error: \"Missing class parameter\" }, { status: 400 })\n\n  try {\n    const students = await prisma.student.findMany({\n      where: {\n        class: className,\n        user: { isActive: true } // Only fetch active students\n      },\n      select: {\n        id: true,\n        rollNo: true,\n        user: { select: { name: true } }\n      },\n      orderBy: { rollNo: 'asc' }\n    })\n\n    return NextResponse.json(students)\n  } catch (error) {\n    return NextResponse.json({ error: \"Failed to fetch students\" }, { status: 500 })\n  }\n}\n",
+    "hash": "74f062487590005c3bc47bf3f21d385f",
+    "size": 956,
+    "tokens": 239,
+    "modified_time": "2026-04-09T02:27:07.396185+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "76748682d0f8f498035a2edf231979b7": {
+    "path": "app\\api\\notices\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { noticeSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function GET(request: Request) {\n  const { errorResponse } = await validateSession([\"ADMIN\", \"TEACHER\", \"STUDENT\"])\n  if (errorResponse) return errorResponse\n  \n  // Example filter for future implementation: targetRole\n  try {\n    const notices = await prisma.notice.findMany({\n      orderBy: { createdAt: 'desc' }\n    })\n    return NextResponse.json(notices)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to fetch notices\")\n  }\n}\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const body = await request.json()\n    const parseResult = noticeSchema.safeParse(body)\n    \n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.errors[0].message }, { status: 400 })\n    }\n\n    const { title, body: textBody, category, targetRole, scheduledAt } = parseResult.data\n\n    const notice = await prisma.notice.create({\n      data: {\n        title,\n        body: textBody,\n        category,\n        targetRole,\n        postedBy: session.user.id,\n        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,\n      }\n    })\n\n    await prisma.auditLog.create({\n       data: {\n         action: \"NOTICE_CREATED\",\n         performedBy: session.user.id,\n         targetId: notice.id,\n         note: `Posted a new Notice targeting ${targetRole}`\n       }\n    })\n\n    return NextResponse.json(notice)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to create notice\")\n  }\n}\n",
+    "hash": "76748682d0f8f498035a2edf231979b7",
+    "size": 1800,
+    "tokens": 450,
+    "modified_time": "2026-04-15T01:27:36.0014708+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/validations",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "GET",
+      "POST"
+    ]
+  },
+  "77f32a54ce95e39d2b74cd4d77ce29bb": {
+    "path": "app\\api\\payments\\history\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function GET() {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id },\n      include: {\n        payments: true\n      }\n    })\n\n    if (!student) return NextResponse.json({ error: \"Student not found\" }, { status: 404 })\n\n    // Find all expected fees for this student's class\n    const expectedFees = await prisma.feeStructure.findMany({\n      where: { class: student.class }\n    })\n\n    const paidFees: any[] = []\n    const pendingFees: any[] = []\n    const activeOrders: any[] = [] // tracking intent in progress\n\n    expectedFees.forEach(fee =\u003e {\n      // Find successfully paid matches\n      const paidMatch = student.payments.find(p =\u003e p.type === fee.type \u0026\u0026 p.status === \"PAID\")\n      \n      if (paidMatch) {\n         // Attach fee structure context (dueDate) to the payment record for history tab\n         paidFees.push({ ...paidMatch, dueDate: fee.dueDate })\n      } else {\n         // It's not paid. Is it pending/processing in razorpay right now?\n         const pendingMatch = student.payments.find(p =\u003e p.type === fee.type \u0026\u0026 p.status === \"PENDING\")\n         if (pendingMatch) activeOrders.push(pendingMatch)\n         \n         pendingFees.push({\n           type: fee.type,\n           amount: fee.amount,\n           dueDate: fee.dueDate,\n           activeOrderId: pendingMatch?.razorpayOrderId\n         })\n      }\n    })\n\n    return NextResponse.json({ paidFees, pendingFees, activeOrders })\n  } catch (error) {\n    return NextResponse.json({ error: \"Server Error\" }, { status: 500 })\n  }\n}\n",
+    "hash": "77f32a54ce95e39d2b74cd4d77ce29bb",
+    "size": 1809,
+    "tokens": 452,
+    "modified_time": "2026-04-15T00:02:41.8059008+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "787d1e704292a645215b1705293a49e9": {
+    "path": "lib\\apiAuth.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { getAuthSession } from \"./auth\"\nimport { checkRateLimit } from \"./rateLimit\"\n\nexport async function validateSession(allowedRoles: string[]) {\n  const session = await getAuthSession()\n\n  if (!session || !session.user) {\n    return {\n      errorResponse: NextResponse.json(\n        { error: \"Unauthorized. Please login.\" },\n        { status: 401 }\n      ),\n      session: null,\n    }\n  }\n\n  if (!allowedRoles.includes(session.user.role)) {\n    return {\n      errorResponse: NextResponse.json(\n        { error: \"Forbidden. Insufficient permissions.\" },\n        { status: 403 }\n      ),\n      session: null,\n    }\n  }\n\n  const rl = checkRateLimit(session.user.id, {\n    limit: 60,\n    windowMs: 60000,\n  })\n  if (!rl.success) {\n    return {\n      errorResponse: NextResponse.json(\n        { error: \"Too many requests. Please slow down.\" },\n        { status: 429 }\n      ),\n      session: null,\n    }\n  }\n\n  return { errorResponse: null, session }\n}\n",
+    "hash": "787d1e704292a645215b1705293a49e9",
+    "size": 996,
+    "tokens": 249,
+    "modified_time": "2026-04-15T16:33:19.670972+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "./auth",
+      "./rateLimit"
+    ],
+    "functions": [
+      "validateSession"
+    ]
+  },
+  "7a5adc421007fa7f945399ea3b646321": {
+    "path": "lib\\razorpay.ts",
+    "content": "import Razorpay from 'razorpay'\n\n// Ensure we only initialize Razorpay if keys are available, to avoid crashing at build time\nconst isRazorpayConfigured = !!process.env.RAZORPAY_KEY_ID \u0026\u0026 !!process.env.RAZORPAY_KEY_SECRET\n\nexport const razorpay = isRazorpayConfigured\n  ? new Razorpay({\n      key_id: process.env.RAZORPAY_KEY_ID!,\n      key_secret: process.env.RAZORPAY_KEY_SECRET!,\n    })\n  : null\n",
+    "hash": "7a5adc421007fa7f945399ea3b646321",
+    "size": 399,
+    "tokens": 99,
+    "modified_time": "2026-04-09T00:44:30.4097347+05:30",
+    "language": "typescript",
+    "imports": [
+      "razorpay"
+    ],
+    "functions": []
+  },
+  "7f78ffcf89286a2ff562d7e35c806fb1": {
+    "path": "app\\globals.css",
+    "content": "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\n@layer utilities {\n  .text-balance {\n    text-wrap: balance;\n  }\n}\n\n@layer base {\n  :root {\n    --background: 0 0% 100%;\n    --foreground: 222.2 84% 4.9%;\n    --card: 0 0% 100%;\n    --card-foreground: 222.2 84% 4.9%;\n    --popover: 0 0% 100%;\n    --popover-foreground: 222.2 84% 4.9%;\n    --primary: 222.2 47.4% 11.2%;\n    --primary-foreground: 210 40% 98%;\n    --secondary: 210 40% 96.1%;\n    --secondary-foreground: 222.2 47.4% 11.2%;\n    --muted: 210 40% 96.1%;\n    --muted-foreground: 215.4 16.3% 46.9%;\n    --accent: 210 40% 96.1%;\n    --accent-foreground: 222.2 47.4% 11.2%;\n    --destructive: 0 84.2% 60.2%;\n    --destructive-foreground: 210 40% 98%;\n    --border: 214.3 31.8% 91.4%;\n    --input: 214.3 31.8% 91.4%;\n    --ring: 222.2 84% 4.9%;\n    --radius: 0.5rem;\n  }\n\n  .dark {\n    --background: 222.2 84% 4.9%;\n    --foreground: 210 40% 98%;\n    --card: 222.2 84% 4.9%;\n    --card-foreground: 210 40% 98%;\n    --popover: 222.2 84% 4.9%;\n    --popover-foreground: 210 40% 98%;\n    --primary: 210 40% 98%;\n    --primary-foreground: 222.2 47.4% 11.2%;\n    --secondary: 217.2 32.6% 17.5%;\n    --secondary-foreground: 210 40% 98%;\n    --muted: 217.2 32.6% 17.5%;\n    --muted-foreground: 215 20.2% 65.1%;\n    --accent: 217.2 32.6% 17.5%;\n    --accent-foreground: 210 40% 98%;\n    --destructive: 0 62.8% 30.6%;\n    --destructive-foreground: 210 40% 98%;\n    --border: 217.2 32.6% 17.5%;\n    --input: 217.2 32.6% 17.5%;\n    --ring: 212.7 26.8% 83.9%;\n  }\n\n  * {\n    @apply border-border;\n  }\n  body {\n    @apply bg-background text-foreground;\n  }\n  html {\n    @apply font-sans;\n  }\n}",
+    "hash": "7f78ffcf89286a2ff562d7e35c806fb1",
+    "size": 1646,
+    "tokens": 411,
+    "modified_time": "2026-04-15T15:32:27.754829+05:30",
+    "language": "css",
+    "imports": [],
+    "functions": []
+  },
+  "851a32de12231f8730c311f253bc2076": {
+    "path": "prisma\\seed.ts",
+    "content": "import { PrismaClient } from '@prisma/client'\nimport bcrypt from 'bcryptjs'\n\nconst prisma = new PrismaClient()\n\nasync function main() {\n  const hashedPassword = await bcrypt.hash('Admin@1234', 10)\n  const teacherPassword = await bcrypt.hash('Teacher@1234', 10)\n\n  // Seed Admin\n  const adminEntry = await prisma.user.upsert({\n    where: { email: 'admin@school.com' },\n    update: {},\n    create: {\n      email: 'admin@school.com',\n      name: 'System Admin',\n      password: hashedPassword,\n      role: 'ADMIN',\n    },\n  })\n  \n  // Seed Teacher\n  const teacherUser = await prisma.user.upsert({\n    where: { email: 'teacher@school.com' },\n    update: {},\n    create: {\n      email: 'teacher@school.com',\n      name: 'Jane Doe',\n      password: teacherPassword,\n      role: 'TEACHER',\n    },\n  })\n\n  await prisma.teacher.upsert({\n    where: { userId: teacherUser.id },\n    update: {},\n    create: {\n      userId: teacherUser.id,\n      assignedClasses: [\"Nursery\", \"1\", \"5\"] // Sample assigned classes\n    }\n  })\n\n  // Seed Notice\n  await prisma.notice.create({\n    data: {\n      title: \"Welcome to Teacher Portal\",\n      body: \"This is a global notice for teachers.\",\n      category: \"General\",\n      targetRole: \"TEACHER\",\n      postedBy: adminEntry.id\n    }\n  })\n\n  console.log('Seeding finished.')\n}\n\nmain()\n  .catch((e) =\u003e {\n    console.error(e)\n    process.exit(1)\n  })\n  .finally(async () =\u003e {\n    await prisma.$disconnect()\n  })\n",
+    "hash": "851a32de12231f8730c311f253bc2076",
+    "size": 1434,
+    "tokens": 358,
+    "modified_time": "2026-04-09T02:25:55.8850316+05:30",
+    "language": "typescript",
+    "imports": [
+      "@prisma/client",
+      "bcryptjs"
+    ],
+    "functions": [
+      "main"
+    ],
+    "security": [
+      {
+        "severity": "LOW",
+        "type": "Debug Code",
+        "description": "Debug code or security TODO in production",
+        "line": 54,
+        "column": 0,
+        "file": "",
+        "code": "console.log('Seeding finished.')",
+        "tool": "regex"
+      }
+    ]
+  },
+  "872232988b5bf065cbafc39ed614a851": {
+    "path": "tailwind.config.ts",
+    "content": "import type { Config } from \"tailwindcss\";\nimport defaultTheme from \"tailwindcss/defaultTheme\";\n\nconst config: Config = {\n  darkMode: [\"class\"],\n  content: [\n    \"./pages/**/*.{js,ts,jsx,tsx,mdx}\",\n    \"./components/**/*.{js,ts,jsx,tsx,mdx}\",\n    \"./app/**/*.{js,ts,jsx,tsx,mdx}\",\n  ],\n  theme: {\n    extend: {\n      colors: {\n        border: \"hsl(var(--border))\",\n        input: \"hsl(var(--input))\",\n        ring: \"hsl(var(--ring))\",\n        background: \"hsl(var(--background))\",\n        foreground: \"hsl(var(--foreground))\",\n        primary: {\n          DEFAULT: \"hsl(var(--primary))\",\n          foreground: \"hsl(var(--primary-foreground))\",\n        },\n        secondary: {\n          DEFAULT: \"hsl(var(--secondary))\",\n          foreground: \"hsl(var(--secondary-foreground))\",\n        },\n        destructive: {\n          DEFAULT: \"hsl(var(--destructive))\",\n          foreground: \"hsl(var(--destructive-foreground))\",\n        },\n        muted: {\n          DEFAULT: \"hsl(var(--muted))\",\n          foreground: \"hsl(var(--muted-foreground))\",\n        },\n        accent: {\n          DEFAULT: \"hsl(var(--accent))\",\n          foreground: \"hsl(var(--accent-foreground))\",\n        },\n        popover: {\n          DEFAULT: \"hsl(var(--popover))\",\n          foreground: \"hsl(var(--popover-foreground))\",\n        },\n        card: {\n          DEFAULT: \"hsl(var(--card))\",\n          foreground: \"hsl(var(--card-foreground))\",\n        },\n      },\n      borderRadius: {\n        lg: \"var(--radius)\",\n        md: \"calc(var(--radius) - 2px)\",\n        sm: \"calc(var(--radius) - 4px)\",\n      },\n      fontFamily: {\n        sans: ['var(--font-geist-sans)', ...defaultTheme.fontFamily.sans],\n        mono: ['var(--font-geist-mono)', ...defaultTheme.fontFamily.mono],\n      },\n    },\n  },\n  plugins: [require(\"tailwindcss-animate\")],\n};\nexport default config;\n",
+    "hash": "872232988b5bf065cbafc39ed614a851",
+    "size": 1836,
+    "tokens": 459,
+    "modified_time": "2026-04-15T15:38:29.8400526+05:30",
+    "language": "typescript",
+    "imports": [
+      "tailwindcss",
+      "tailwindcss/defaultTheme"
+    ],
+    "functions": []
+  },
+  "918ff48aaf2ce062fdd2b5e09a5535b7": {
+    "path": "lib\\supabase.ts",
+    "content": "import { createClient } from '@supabase/supabase-js'\n\nconst supabaseUrl = process.env.SUPABASE_URL!\n\n// Public client — for reading public data\nexport const supabase = createClient(\n  supabaseUrl,\n  process.env.SUPABASE_ANON_KEY!\n)\n\n// Admin client — for server-side file uploads (bypasses RLS)\n// NEVER use this in client components\nexport const supabaseAdmin = createClient(\n  supabaseUrl,\n  process.env.SUPABASE_SERVICE_ROLE_KEY!\n)\n",
+    "hash": "918ff48aaf2ce062fdd2b5e09a5535b7",
+    "size": 439,
+    "tokens": 109,
+    "modified_time": "2026-04-15T16:20:07.8835229+05:30",
+    "language": "typescript",
+    "imports": [
+      "@supabase/supabase-js"
+    ],
+    "functions": []
+  },
+  "938081bbcc9b17a89013e1c255a104bf": {
+    "path": "app\\api\\teacher\\dashboard\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { startOfDay, endOfDay } from \"date-fns\"\n\nexport async function GET() {\n  const { errorResponse, session } = await validateSession([\"TEACHER\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const teacher = await prisma.teacher.findUnique({\n      where: { userId: session.user.id },\n    })\n\n    if (!teacher) return NextResponse.json({ error: \"Teacher profile not found\" }, { status: 404 })\n\n    const assignedClasses = teacher.assignedClasses || []\n\n    // Map through assigned classes and check if attendance exists TODAY\n    const todayStart = startOfDay(new Date())\n    const todayEnd = endOfDay(new Date())\n\n    const attendanceStatus = await Promise.all(\n      assignedClasses.map(async (className) =\u003e {\n        const markedRecord = await prisma.attendance.findFirst({\n          where: {\n            date: { gte: todayStart, lte: todayEnd },\n            student: { class: className }\n          }\n        })\n        return {\n          class: className,\n          isMarked: !!markedRecord\n        }\n      })\n    )\n\n    // Check for pending results: simple count of students without results?\n    // An approximation is getting counts of total results entered by this teacher.\n    // For simplicity of MVP metric, we just pass down standard analytics payload.\n\n    return NextResponse.json({\n      teacher,\n      attendanceStatus\n    })\n  } catch (error) {\n    return NextResponse.json({ error: \"Server Error\" }, { status: 500 })\n  }\n}\n",
+    "hash": "938081bbcc9b17a89013e1c255a104bf",
+    "size": 1582,
+    "tokens": 395,
+    "modified_time": "2026-04-09T02:26:49.5436408+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "date-fns"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "a0f359254b762f31f220e23a25d642e9": {
+    "path": "app\\api\\results\\student\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function GET(request: Request) {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  const { searchParams } = new URL(request.url)\n  const examType = searchParams.get('exam')\n\n  if (!examType) return NextResponse.json({ error: \"Missing exam type\" }, { status: 400 })\n\n  try {\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id },\n      include: {\n        user: { select: { name: true } }\n      }\n    })\n\n    if (!student) return NextResponse.json({ error: \"Student not found\" }, { status: 404 })\n\n    const results = await prisma.result.findMany({\n      where: {\n        studentId: student.id,\n        examType: examType as any\n      },\n      orderBy: { subject: \"asc\" }\n    })\n\n    return NextResponse.json({\n      student: {\n        name: student.user.name,\n        class: student.class,\n        section: student.section,\n        rollNo: student.rollNo\n      },\n      results\n    })\n  } catch (error) {\n    return NextResponse.json({ error: \"Server Error\" }, { status: 500 })\n  }\n}\n",
+    "hash": "a0f359254b762f31f220e23a25d642e9",
+    "size": 1234,
+    "tokens": 308,
+    "modified_time": "2026-04-15T00:06:19.4283015+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "a471a059b2c0a027122412e0d1a522df": {
+    "path": "app\\api\\students\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport bcrypt from \"bcryptjs\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { studentSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function GET(request: Request) {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  const { searchParams } = new URL(request.url)\n  const classFilter = searchParams.get(\"class\")\n  const search = searchParams.get(\"search\")\n\n  try {\n    const students = await prisma.student.findMany({\n      where: {\n        user: { isActive: true },\n        ...(classFilter \u0026\u0026 { class: classFilter }),\n        ...(search \u0026\u0026 {\n          OR: [\n            { user: { name: { contains: search, mode: 'insensitive' } } },\n            { rollNo: { contains: search, mode: 'insensitive' } }\n          ]\n        })\n      },\n      include: { user: { select: { name: true, email: true, isActive: true } } },\n      orderBy: { class: 'asc' }\n    })\n    return NextResponse.json(students)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to fetch students\")\n  }\n}\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const body = await request.json()\n    const parseResult = studentSchema.safeParse(body)\n    \n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n    \n    const { name, class: className, section, dob, parentName, contact, address, photoUrl } = parseResult.data\n\n    // Generate Roll Number: CLASS-YEAR-SEQUENCE\n    const year = new Date().getFullYear()\n    const countInClassThisYear = await prisma.student.count({\n      where: { class: className, rollNo: { contains: `${year}` } }\n    })\n    const sequence = String(countInClassThisYear + 1).padStart(3, '0')\n    const rollNo = `${className}-${year}-${sequence}`\n    \n    // Auto-generate email \u0026 temp password (contact number base)\n    const email = `${rollNo.toLowerCase()}@school.com`\n    const hashedPassword = await bcrypt.hash(contact, 10)\n\n    // Transaction to create User then Student\n    const newStudent = await prisma.$transaction(async (tx) =\u003e {\n      const user = await tx.user.create({\n        data: {\n          name,\n          email,\n          password: hashedPassword,\n          role: \"STUDENT\",\n        }\n      })\n\n      return await tx.student.create({\n        data: {\n          userId: user.id,\n          class: className,\n          section,\n          rollNo,\n          parentName,\n          contact,\n          address,\n          photoUrl,\n          dob: new Date(dob),\n        },\n        include: { user: { select: { email: true } } } // Return email for UI credentials display\n      })\n    })\n\n    // Log the action asynchronously so we don't stall the request too much\n    await prisma.auditLog.create({\n      data: {\n        action: \"STUDENT_CREATED\",\n        performedBy: session.user.id,\n        targetId: newStudent.id,\n        note: `Created new student ${newStudent.rollNo}`\n      }\n    })\n\n    return NextResponse.json(newStudent, { status: 201 })\n  } catch (error: any) {\n    return handlePrismaError(error, \"Internal Server Error\")\n  }\n}\n",
+    "hash": "a471a059b2c0a027122412e0d1a522df",
+    "size": 3356,
+    "tokens": 839,
+    "modified_time": "2026-04-15T16:40:48.0470415+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "bcryptjs",
+      "@/lib/apiAuth",
+      "@/lib/validations",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "GET",
+      "POST"
+    ]
+  },
+  "a80b58c3c633690e9e14d57aa03941d3": {
+    "path": "next-env.d.ts",
+    "content": "/// \u003creference types=\"next\" /\u003e\n/// \u003creference types=\"next/image-types/global\" /\u003e\nimport \"./.next/dev/types/routes.d.ts\";\n\n// NOTE: This file should not be edited\n// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.\n",
+    "hash": "a80b58c3c633690e9e14d57aa03941d3",
+    "size": 251,
+    "tokens": 62,
+    "modified_time": "2026-04-15T15:28:16.3053839+05:30",
+    "language": "typescript",
+    "imports": [],
+    "functions": []
+  },
+  "c076b1c442a94bd48635c9b804c7c64a": {
+    "path": "app\\api\\auth\\[...nextauth]\\route.ts",
+    "content": "import NextAuth from \"next-auth\"\nimport { authOptions } from \"@/lib/auth\"\n\nconst handler = NextAuth(authOptions)\nexport { handler as GET, handler as POST }",
+    "hash": "c076b1c442a94bd48635c9b804c7c64a",
+    "size": 155,
+    "tokens": 38,
+    "modified_time": "2026-04-15T16:28:21.0959687+05:30",
+    "language": "typescript",
+    "imports": [
+      "next-auth",
+      "@/lib/auth"
+    ],
+    "functions": []
+  },
+  "c21b462a2d064f4007ee2cc355ddd6be": {
+    "path": "lib\\auth.ts",
+    "content": "import type { NextAuthOptions } from \"next-auth\"\nimport { getServerSession } from \"next-auth/next\"\nimport CredentialsProvider from \"next-auth/providers/credentials\"\nimport { prisma } from \"@/lib/prisma\"\nimport bcrypt from \"bcryptjs\"\n\nexport const authOptions: NextAuthOptions = {\n  secret: process.env.NEXTAUTH_SECRET,\n  session: {\n    strategy: \"jwt\",\n    maxAge: 30 * 60,\n  },\n  pages: {\n    signIn: \"/login\",\n  },\n  providers: [\n    CredentialsProvider({\n      name: \"credentials\",\n      credentials: {\n        email: { label: \"Email\", type: \"email\" },\n        password: { label: \"Password\", type: \"password\" },\n        role: { label: \"Role\", type: \"text\" },\n      },\n      async authorize(credentials) {\n        if (\n          !credentials?.email ||\n          !credentials?.password ||\n          !credentials?.role\n        ) {\n          throw new Error(\"All fields are required\")\n        }\n\n        const user = await prisma.user.findUnique({\n          where: { email: credentials.email },\n        })\n\n        if (!user) {\n          throw new Error(\"No account found with this email\")\n        }\n\n        if (!user.isActive) {\n          throw new Error(\"Account is deactivated. Contact admin.\")\n        }\n\n        const passwordMatch = await bcrypt.compare(\n          credentials.password,\n          user.password\n        )\n        if (!passwordMatch) {\n          throw new Error(\"Incorrect password\")\n        }\n\n        if (user.role !== credentials.role) {\n          throw new Error(\n            `This account is not registered as ${credentials.role}`\n          )\n        }\n\n        return {\n          id: user.id,\n          name: user.name,\n          email: user.email,\n          role: user.role,\n        }\n      },\n    }),\n  ],\n  callbacks: {\n    async jwt({ token, user }) {\n      if (user) {\n        token.id = user.id\n        token.role = (user as any).role\n      }\n      return token\n    },\n    async session({ session, token }) {\n      if (token \u0026\u0026 session.user) {\n        session.user.id = token.id as string\n        session.user.role = token.role as string\n      }\n      return session\n    },\n  },\n}\n\n// Use this in all API routes instead of auth()\nexport async function getAuthSession() {\n  return getServerSession(authOptions)\n}\n",
+    "hash": "c21b462a2d064f4007ee2cc355ddd6be",
+    "size": 2245,
+    "tokens": 561,
+    "modified_time": "2026-04-15T16:29:40.5683499+05:30",
+    "language": "typescript",
+    "imports": [
+      "next-auth",
+      "next-auth/next",
+      "next-auth/providers/credentials",
+      "@/lib/prisma",
+      "bcryptjs"
+    ],
+    "functions": [
+      "getAuthSession"
+    ]
+  },
+  "d3a830db628226fdc7429699d7626ec0": {
+    "path": "app\\api\\payments\\webhook\\route.ts",
+    "content": "import { logger } from \"@/lib/logger\"\nimport { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport crypto from \"crypto\"\n\nexport async function POST(req: Request) {\n  try {\n    const bodyText = await req.text()\n    const signature = req.headers.get(\"x-razorpay-signature\")\n    const secret = process.env.RAZORPAY_WEBHOOK_SECRET\n\n    if (!secret) return new NextResponse(\"Webhook secret not configured\", { status: 500 })\n    if (!signature) return new NextResponse(\"Missing signature\", { status: 400 })\n\n    // Verify cryptographic signature\n    const expectedSignature = crypto\n      .createHmac(\"sha256\", secret)\n      .update(bodyText)\n      .digest(\"hex\")\n\n    if (expectedSignature !== signature) {\n      logger.error(\"Critical Security Event: Forged Razorpay Webhook Trapped.\")\n      return new NextResponse(\"Invalid signature spoofing attempt logged\", { status: 400 })\n    }\n\n    const payload = JSON.parse(bodyText)\n\n    if (payload.event === \"payment.captured\" || payload.event === \"order.paid\") {\n       // Locate the payment entity dynamically (Event format structure depends heavily on webhook hook types).\n       // Standard order.paid passes entity directly representing the order\n       const order_id = payload.payload?.payment?.entity?.order_id || payload.payload?.order?.entity?.id\n       const payment_id = payload.payload?.payment?.entity?.id || \"\"\n\n       if (order_id) {\n           const dbPayment = await prisma.payment.findUnique({ where: { razorpayOrderId: order_id } })\n           \n           if (dbPayment \u0026\u0026 dbPayment.status === \"PENDING\") {\n               const updated = await prisma.payment.update({\n                 where: { id: dbPayment.id },\n                 data: {\n                   status: \"PAID\",\n                   razorpayPaymentId: payment_id,\n                   verifiedAt: new Date()\n                 }\n               })\n\n               // Generate internal audit tracking to alert Admins that a student transaction resolved out-of-band via Razorpay.\n               await prisma.auditLog.create({\n                 data: {\n                   action: \"RAZORPAY_PAYMENT_VERIFIED\",\n                   performedBy: \"SYSTEM_WEBHOOK\",\n                   targetId: updated.studentId,\n                   note: `Automated confirmation of ${updated.type} for amount ${updated.amount}`\n                 }\n               })\n           }\n       }\n    } else if (payload.event === \"payment.failed\") {\n       const order_id = payload.payload?.payment?.entity?.order_id\n       if (order_id) {\n           await prisma.payment.update({\n             where: { razorpayOrderId: order_id },\n             data: { status: \"FAILED\" }\n           })\n       }\n    }\n\n    return NextResponse.json({ status: \"ok\" })\n  } catch (error) {\n    logger.error(\"Webhook processing error:\", error)\n    return new NextResponse(\"Webhook process failed\", { status: 500 })\n  }\n}\n\r\n",
+    "hash": "d3a830db628226fdc7429699d7626ec0",
+    "size": 2907,
+    "tokens": 726,
+    "modified_time": "2026-04-15T00:45:41.5493398+05:30",
+    "language": "typescript",
+    "imports": [
+      "@/lib/logger",
+      "next/server",
+      "@/lib/prisma",
+      "crypto"
+    ],
+    "functions": [
+      "POST"
+    ]
+  },
+  "d4fd0e084ef17189d4bd31410a82483c": {
+    "path": "lib\\prisma-error.ts",
+    "content": "import logger from \"@/lib/logger\"\nimport { NextResponse } from 'next/server'\n\nexport function handlePrismaError(error: any, defaultMessage: string = \"Internal Server Error\") {\n  if (error?.code === 'P2002') {\n    return NextResponse.json({ error: \"Conflict: Record already exists.\" }, { status: 409 })\n  }\n  if (error?.code === 'P2025') {\n    return NextResponse.json({ error: \"Not Found: Record does not exist.\" }, { status: 404 })\n  }\n  \n  logger.error(\"Database Error:\", error)\n  return NextResponse.json({ error: defaultMessage }, { status: 500 })\n}\n\n",
+    "hash": "d4fd0e084ef17189d4bd31410a82483c",
+    "size": 555,
+    "tokens": 138,
+    "modified_time": "2026-04-15T15:26:31.4243953+05:30",
+    "language": "typescript",
+    "imports": [
+      "@/lib/logger",
+      "next/server"
+    ],
+    "functions": [
+      "handlePrismaError"
+    ]
+  },
+  "d882be461215c706e61c3576171a7c97": {
+    "path": "lib\\prisma.ts",
+    "content": "import { PrismaClient } from '@prisma/client'\n\nconst prismaClientSingleton = () =\u003e {\n  return new PrismaClient()\n}\n\ndeclare global {\n  var prismaGlobal: undefined | ReturnType\u003ctypeof prismaClientSingleton\u003e\n}\n\nexport const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()\n\nif (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma\n",
+    "hash": "d882be461215c706e61c3576171a7c97",
+    "size": 359,
+    "tokens": 89,
+    "modified_time": "2026-04-09T00:44:19.8623894+05:30",
+    "language": "typescript",
+    "imports": [
+      "@prisma/client"
+    ],
+    "functions": [
+      "prismaClientSingleton"
+    ]
+  },
+  "da9c58f3eb8eb4097a1d50cb3ea4c16a": {
+    "path": "app\\api\\results\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function GET(request: Request) {\n  const { errorResponse, session } = await validateSession([\"TEACHER\", \"ADMIN\"])\n  if (errorResponse || !session) return errorResponse || NextResponse.json({ error: \"Unauthorized\" }, { status: 401 })\n\n  const { searchParams } = new URL(request.url)\n  const className = searchParams.get('class')\n  const subject = searchParams.get('subject')\n  const examType = searchParams.get('examType')\n\n  if (!className || !subject || !examType) {\n    return NextResponse.json({ error: \"Missing parameters\" }, { status: 400 })\n  }\n\n  if (session.user.role === \"TEACHER\") {\n    const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })\n    if (!teacher?.assignedClasses.includes(className)) {\n      return NextResponse.json({ error: \"Unauthorized access to this class\" }, { status: 403 })\n    }\n  }\n\n  try {\n    const results = await prisma.result.findMany({\n      where: {\n        subject,\n        examType: examType as any,\n        student: { class: className }\n      }\n    })\n\n    return NextResponse.json(results)\n  } catch (error) {\n    return NextResponse.json({ error: \"Failed to fetch results\" }, { status: 500 })\n  }\n}\n",
+    "hash": "da9c58f3eb8eb4097a1d50cb3ea4c16a",
+    "size": 1320,
+    "tokens": 330,
+    "modified_time": "2026-04-15T00:36:35.1155686+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "dec10f2c42cb52f374e72a06d9b392c2": {
+    "path": "app\\api\\student\\dashboard\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function GET() {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    // SECURITY: Use session.user.id strictly to extract the profile\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id },\n      include: {\n        user: { select: { name: true, email: true } },\n        attendance: true,\n        payments: { where: { status: \"PENDING\" } },\n        results: {\n           orderBy: { createdAt: 'desc' }\n        }\n      }\n    })\n\n    if (!student) return NextResponse.json({ error: \"Student profile not linked properly\" }, { status: 404 })\n\n    // Attendance %\n    let attendancePercentage = 100\n    if (student.attendance.length \u003e 0) {\n      const presentDays = student.attendance.filter(a =\u003e a.status === \"PRESENT\").length\n      attendancePercentage = (presentDays / student.attendance.length) * 100\n    }\n\n    // Fee Status\n    const hasPendingFees = student.payments.length \u003e 0\n\n    // Latest Result Logic\n    let lastResultPercentage = null\n    if (student.results.length \u003e 0) {\n      // Group by latest examType\n      const latestExamType = student.results[0].examType\n      const relatedResults = student.results.filter(r =\u003e r.examType === latestExamType)\n      \n      let sumObs = 0\n      let sumTot = 0\n      relatedResults.forEach(r =\u003e {\n        sumObs += r.marksObtained\n        sumTot += r.totalMarks\n      })\n\n      if (sumTot \u003e 0) {\n        lastResultPercentage = (sumObs / sumTot) * 100\n      }\n    }\n\n    // Determine notice target volume\n    const totalNotices = await prisma.notice.count({\n      where: { targetRole: { in: [\"ALL\", \"STUDENT\"] } }\n    })\n\n    return NextResponse.json({\n      student: {\n        id: student.id,\n        name: student.user.name,\n        class: student.class,\n        section: student.section,\n        rollNo: student.rollNo,\n        photoUrl: student.photoUrl,\n        email: student.user.email\n      },\n      metrics: {\n        attendancePercentage: attendancePercentage.toFixed(1),\n        hasPendingFees,\n        lastResultPercentage: lastResultPercentage ? lastResultPercentage.toFixed(1) : null,\n        totalNotices\n      }\n    })\n  } catch (error) {\n    return NextResponse.json({ error: \"Server Error\" }, { status: 500 })\n  }\n}\n",
+    "hash": "dec10f2c42cb52f374e72a06d9b392c2",
+    "size": 2439,
+    "tokens": 609,
+    "modified_time": "2026-04-15T00:01:56.0081976+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "df5092723584db8d538e278cd30a6403": {
+    "path": "app\\api\\results\\bulk\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { resultBulkSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"TEACHER\", \"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const body = await request.json()\n    const parseResult = resultBulkSchema.safeParse(body.payload)\n\n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n\n    const payload = parseResult.data\n\n    if (session.user.role === \"TEACHER\") {\n      const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })\n      \n      const sampleStudent = await prisma.student.findUnique({\n        where: { id: payload[0].studentId },\n        select: { class: true }\n      })\n      \n      if (!sampleStudent || !teacher?.assignedClasses.includes(sampleStudent.class)) {\n        return NextResponse.json({ error: \"Unauthorized to edit results for this class\" }, { status: 403 })\n      }\n    }\n\n    let createdCount = 0\n    let updatedCount = 0\n\n    await prisma.$transaction(async (tx) =\u003e {\n      for (const rec of payload) {\n        const existing = await tx.result.findUnique({\n          where: {\n            studentId_subject_examType: {\n              studentId: rec.studentId,\n              subject: rec.subject,\n              examType: rec.examType,\n            }\n          }\n        })\n\n        if (existing) {\n          await tx.result.update({\n            where: { id: existing.id },\n            data: {\n              marksObtained: rec.marksObtained,\n              totalMarks: rec.totalMarks\n            }\n          })\n          updatedCount++\n        } else {\n          await tx.result.create({\n             data: {\n               studentId: rec.studentId,\n               subject: rec.subject,\n               examType: rec.examType,\n               marksObtained: rec.marksObtained,\n               totalMarks: rec.totalMarks\n             }\n          })\n          createdCount++\n        }\n      }\n      \n      // We could log to AuditLog if edits occur, adhering to requested feature: \"Edit log: if editing existing marks, require a short reason note\"\n      // Wait, let's look at that. The UI sends a note if it's an edit.\n      // So payload could have { ...rec, editReason: \"revaluation\" }.\n      // If editReason exists, we log it.\n      for (const rec of payload) {\n        if (rec.editReason) {\n           await tx.auditLog.create({\n             data: {\n               action: \"RESULT_EDITED\",\n               performedBy: session.user.id,\n               targetId: rec.studentId,\n               note: `Subject: ${rec.subject}, Exam: ${rec.examType}. Reason: ${rec.editReason}`\n             }\n           })\n        }\n      }\n\n    })\n\n    return NextResponse.json({ success: true, createdCount, updatedCount })\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to save results\")\n  }\n}\n",
+    "hash": "df5092723584db8d538e278cd30a6403",
+    "size": 3119,
+    "tokens": 779,
+    "modified_time": "2026-04-15T15:24:55.1615553+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/validations",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "POST"
+    ]
+  },
+  "e5ed846ce03fc671478e6dfb2aa4e06f": {
+    "path": "app\\api\\payments\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function GET(request: Request) {\n  const { errorResponse } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  const { searchParams } = new URL(request.url)\n  const status = searchParams.get('status')\n  \n  try {\n    const payments = await prisma.payment.findMany({\n      where: {\n        ...(status \u0026\u0026 status !== 'ALL' \u0026\u0026 { status: status as any })\n      },\n      include: {\n        student: { select: { class: true, user: { select: { name: true } } } }\n      },\n      orderBy: { createdAt: 'desc' }\n    })\n    return NextResponse.json(payments)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to fetch payments\")\n  }\n}\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"ADMIN\"])\n  if (errorResponse) return errorResponse\n\n  try {\n    const { studentId, type, amount, note } = await request.json()\n    \n    const payment = await prisma.$transaction(async (tx) =\u003e {\n      const p = await tx.payment.create({\n        data: {\n          studentId,\n          type,\n          amount: parseFloat(amount),\n          status: \"PAID\",\n          verifiedAt: new Date(),\n          razorpayOrderId: `MANUAL_${Date.now()}` // generate dummy unique ID\n        }\n      })\n      \n      await tx.auditLog.create({\n        data: {\n          action: \"MANUAL_PAYMENT\",\n          performedBy: session.user.id,\n          targetId: p.id,\n          note\n        }\n      })\n      return p\n    })\n    return NextResponse.json(payment)\n  } catch (error) {\n    return handlePrismaError(error, \"Failed to create manual payment\")\n  }\n}\n",
+    "hash": "e5ed846ce03fc671478e6dfb2aa4e06f",
+    "size": 1804,
+    "tokens": 451,
+    "modified_time": "2026-04-15T01:27:36.0034953+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "GET",
+      "POST"
+    ]
+  },
+  "ea69e81ef959fcceb88966208a6c3330": {
+    "path": "postcss.config.mjs",
+    "content": "/** @type {import('postcss-load-config').Config} */\nconst config = {\n  plugins: {\n    tailwindcss: {},\n  },\n};\n\nexport default config;\n",
+    "hash": "ea69e81ef959fcceb88966208a6c3330",
+    "size": 135,
+    "tokens": 33,
+    "modified_time": "2026-04-09T00:31:07.6441075+05:30",
+    "language": "javascript",
+    "imports": [],
+    "functions": []
+  },
+  "f3024eae90866156d7afd6ff539ac1a1": {
+    "path": "app\\api\\students\\[id]\\deactivate\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\n\nexport async function PATCH(request: Request, { params }: { params: { id: string } }) {\n  const { errorResponse, session } = await validateSession([\"ADMIN\"])\n  if (errorResponse || !session) return errorResponse\n\n  try {\n    const student = await prisma.student.findUnique({ where: { id: params.id } })\n    if (!student) return NextResponse.json({ error: \"Not Found\" }, { status: 404 })\n\n    // Soft delete: set user.isActive = false\n    await prisma.$transaction([\n      prisma.user.update({\n        where: { id: student.userId },\n        data: { isActive: false }\n      }),\n      prisma.auditLog.create({\n        data: {\n          action: \"STUDENT_DEACTIVATED\",\n          performedBy: session.user.id,\n          targetId: student.id,\n          note: `Deactivated student account and set isActive=false`\n        }\n      })\n    ])\n\n    return NextResponse.json({ success: true })\n  } catch (error) {\n    return NextResponse.json({ error: \"Failed to deactivate student\" }, { status: 500 })\n  }\n}\n",
+    "hash": "f3024eae90866156d7afd6ff539ac1a1",
+    "size": 1125,
+    "tokens": 281,
+    "modified_time": "2026-04-15T16:20:07.5943889+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth"
+    ],
+    "functions": [
+      "PATCH"
+    ]
+  },
+  "f3e413c5a8272704ef5dff76e33f1d79": {
+    "path": "app\\api\\attendance\\student\\route.ts",
+    "content": "import { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { startOfMonth, endOfMonth } from \"date-fns\"\n\nexport async function GET(request: Request) {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  const { searchParams } = new URL(request.url)\n  const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1))\n  const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()))\n\n  try {\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id }\n    })\n\n    if (!student) return NextResponse.json({ error: \"Student not found\" }, { status: 404 })\n\n    // Build date range for the requested month\n    const targetDate = new Date(year, month - 1, 1) // month is 1-indexed from frontend\n    const rangeStart = startOfMonth(targetDate)\n    const rangeEnd = endOfMonth(targetDate)\n\n    const records = await prisma.attendance.findMany({\n      where: {\n        studentId: student.id,\n        date: { gte: rangeStart, lte: rangeEnd }\n      },\n      orderBy: { date: \"asc\" }\n    })\n\n    // Overall stats (not just this month — full history for the percentage)\n    const allRecords = await prisma.attendance.findMany({\n      where: { studentId: student.id }\n    })\n\n    const totalDays = allRecords.length\n    const presentDays = allRecords.filter(r =\u003e r.status === \"PRESENT\").length\n    const absentDays = allRecords.filter(r =\u003e r.status === \"ABSENT\").length\n    const leaveDays = allRecords.filter(r =\u003e r.status === \"LEAVE\").length\n    const percentage = totalDays \u003e 0 ? ((presentDays / totalDays) * 100).toFixed(1) : \"100.0\"\n\n    return NextResponse.json({\n      records: records.map(r =\u003e ({\n        date: r.date,\n        status: r.status\n      })),\n      stats: { totalDays, presentDays, absentDays, leaveDays, percentage }\n    })\n  } catch (error) {\n    return NextResponse.json({ error: \"Server Error\" }, { status: 500 })\n  }\n}\n",
+    "hash": "f3e413c5a8272704ef5dff76e33f1d79",
+    "size": 2050,
+    "tokens": 512,
+    "modified_time": "2026-04-15T00:05:15.9767276+05:30",
+    "language": "typescript",
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "date-fns"
+    ],
+    "functions": [
+      "GET"
+    ]
+  },
+  "f86c23e92dbf82d76de31db364227298": {
+    "path": "hooks\\use-toast.ts",
+    "content": "\"use client\"\n\n// Inspired by react-hot-toast library\nimport * as React from \"react\"\n\nimport type {\n  ToastActionElement,\n  ToastProps,\n} from \"@/components/ui/toast\"\n\nconst TOAST_LIMIT = 1\nconst TOAST_REMOVE_DELAY = 1000000\n\ntype ToasterToast = ToastProps \u0026 {\n  id: string\n  title?: React.ReactNode\n  description?: React.ReactNode\n  action?: ToastActionElement\n}\n\nconst actionTypes = {\n  ADD_TOAST: \"ADD_TOAST\",\n  UPDATE_TOAST: \"UPDATE_TOAST\",\n  DISMISS_TOAST: \"DISMISS_TOAST\",\n  REMOVE_TOAST: \"REMOVE_TOAST\",\n} as const\n\nlet count = 0\n\nfunction genId() {\n  count = (count + 1) % Number.MAX_SAFE_INTEGER\n  return count.toString()\n}\n\ntype ActionType = typeof actionTypes\n\ntype Action =\n  | {\n      type: ActionType[\"ADD_TOAST\"]\n      toast: ToasterToast\n    }\n  | {\n      type: ActionType[\"UPDATE_TOAST\"]\n      toast: Partial\u003cToasterToast\u003e\n    }\n  | {\n      type: ActionType[\"DISMISS_TOAST\"]\n      toastId?: ToasterToast[\"id\"]\n    }\n  | {\n      type: ActionType[\"REMOVE_TOAST\"]\n      toastId?: ToasterToast[\"id\"]\n    }\n\ninterface State {\n  toasts: ToasterToast[]\n}\n\nconst toastTimeouts = new Map\u003cstring, ReturnType\u003ctypeof setTimeout\u003e\u003e()\n\nconst addToRemoveQueue = (toastId: string) =\u003e {\n  if (toastTimeouts.has(toastId)) {\n    return\n  }\n\n  const timeout = setTimeout(() =\u003e {\n    toastTimeouts.delete(toastId)\n    dispatch({\n      type: \"REMOVE_TOAST\",\n      toastId: toastId,\n    })\n  }, TOAST_REMOVE_DELAY)\n\n  toastTimeouts.set(toastId, timeout)\n}\n\nexport const reducer = (state: State, action: Action): State =\u003e {\n  switch (action.type) {\n    case \"ADD_TOAST\":\n      return {\n        ...state,\n        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),\n      }\n\n    case \"UPDATE_TOAST\":\n      return {\n        ...state,\n        toasts: state.toasts.map((t) =\u003e\n          t.id === action.toast.id ? { ...t, ...action.toast } : t\n        ),\n      }\n\n    case \"DISMISS_TOAST\": {\n      const { toastId } = action\n\n      // ! Side effects ! - This could be extracted into a dismissToast() action,\n      // but I'll keep it here for simplicity\n      if (toastId) {\n        addToRemoveQueue(toastId)\n      } else {\n        state.toasts.forEach((toast) =\u003e {\n          addToRemoveQueue(toast.id)\n        })\n      }\n\n      return {\n        ...state,\n        toasts: state.toasts.map((t) =\u003e\n          t.id === toastId || toastId === undefined\n            ? {\n                ...t,\n                open: false,\n              }\n            : t\n        ),\n      }\n    }\n    case \"REMOVE_TOAST\":\n      if (action.toastId === undefined) {\n        return {\n          ...state,\n          toasts: [],\n        }\n      }\n      return {\n        ...state,\n        toasts: state.toasts.filter((t) =\u003e t.id !== action.toastId),\n      }\n  }\n}\n\nconst listeners: Array\u003c(state: State) =\u003e void\u003e = []\n\nlet memoryState: State = { toasts: [] }\n\nfunction dispatch(action: Action) {\n  memoryState = reducer(memoryState, action)\n  listeners.forEach((listener) =\u003e {\n    listener(memoryState)\n  })\n}\n\ntype Toast = Omit\u003cToasterToast, \"id\"\u003e\n\nfunction toast({ ...props }: Toast) {\n  const id = genId()\n\n  const update = (props: ToasterToast) =\u003e\n    dispatch({\n      type: \"UPDATE_TOAST\",\n      toast: { ...props, id },\n    })\n  const dismiss = () =\u003e dispatch({ type: \"DISMISS_TOAST\", toastId: id })\n\n  dispatch({\n    type: \"ADD_TOAST\",\n    toast: {\n      ...props,\n      id,\n      open: true,\n      onOpenChange: (open) =\u003e {\n        if (!open) dismiss()\n      },\n    },\n  })\n\n  return {\n    id: id,\n    dismiss,\n    update,\n  }\n}\n\nfunction useToast() {\n  const [state, setState] = React.useState\u003cState\u003e(memoryState)\n\n  React.useEffect(() =\u003e {\n    listeners.push(setState)\n    return () =\u003e {\n      const index = listeners.indexOf(setState)\n      if (index \u003e -1) {\n        listeners.splice(index, 1)\n      }\n    }\n  }, [state])\n\n  return {\n    ...state,\n    toast,\n    dismiss: (toastId?: string) =\u003e dispatch({ type: \"DISMISS_TOAST\", toastId }),\n  }\n}\n\nexport { useToast, toast }\n",
+    "hash": "f86c23e92dbf82d76de31db364227298",
+    "size": 3948,
+    "tokens": 987,
+    "modified_time": "2026-04-09T00:38:36.8230299+05:30",
+    "language": "typescript",
+    "imports": [
+      "react"
+    ],
+    "functions": [
+      "genId",
+      "addToRemoveQueue",
+      "dispatch",
+      "toast",
+      "update",
+      "dismiss",
+      "useToast"
+    ]
+  },
+  "faac3aaca660617389e58f9676458dda": {
+    "path": "types\\next-auth.d.ts",
+    "content": "import \"next-auth\"\r\nimport \"next-auth/jwt\"\r\n\r\ndeclare module \"next-auth\" {\r\n  interface User {\r\n    id: string\r\n    role: string\r\n  }\r\n  interface Session {\r\n    user: {\r\n      id: string\r\n      name: string\r\n      email: string\r\n      role: string\r\n    }\r\n  }\r\n}\r\n\r\ndeclare module \"next-auth/jwt\" {\r\n  interface JWT {\r\n    id: string\r\n    role: string\r\n  }\r\n}\r\n",
+    "hash": "faac3aaca660617389e58f9676458dda",
+    "size": 362,
+    "tokens": 90,
+    "modified_time": "2026-04-15T16:33:39.399517+05:30",
+    "language": "typescript",
+    "imports": [],
+    "functions": []
+  },
+  "ff32abf32e9ac1e40ee11bd87f751944": {
+    "path": "app\\api\\payments\\create-order\\route.ts",
+    "content": "import logger from \"@/lib/logger\"\nimport { NextResponse } from \"next/server\"\nimport { prisma } from \"@/lib/prisma\"\nimport { validateSession } from \"@/lib/apiAuth\"\nimport { razorpay } from \"@/lib/razorpay\"\nimport { paymentSchema } from \"@/lib/validations\"\nimport { handlePrismaError } from \"@/lib/prisma-error\"\n\nexport async function POST(request: Request) {\n  const { errorResponse, session } = await validateSession([\"STUDENT\"])\n  if (errorResponse) return errorResponse\n\n  if (!razorpay) {\n    return NextResponse.json({ error: \"Razorpay is not configured on the server.\" }, { status: 503 })\n  }\n\n  try {\n    const body = await request.json()\n    const parseResult = paymentSchema.safeParse(body)\n    \n    if (!parseResult.success) {\n      return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })\n    }\n\n    const { amount, type } = parseResult.data\n\n    const student = await prisma.student.findUnique({\n      where: { userId: session.user.id }\n    })\n    if (!student) return NextResponse.json({ error: \"Student not found\" }, { status: 404 })\n\n    // Rate Limiting: 3 orders per minute per student\n    const oneMinuteAgo = new Date(Date.now() - 60000)\n    const recentOrdersCount = await prisma.payment.count({\n      where: {\n        studentId: student.id,\n        createdAt: { gte: oneMinuteAgo }\n      }\n    })\n\n    if (recentOrdersCount \u003e= 3) {\n      return NextResponse.json({ error: \"Too many payment attempts. Please wait a minute before trying again.\" }, { status: 429 })\n    }\n\n    // Create Order with Razorpay SDK\n    const orderOptions = {\n      amount: Math.round(amount * 100), // convert to smallest currency unit (paise)\n      currency: \"INR\",\n      receipt: `rcpt_${student.rollNo}_${Date.now()}`\n    }\n\n    const order = await razorpay.orders.create(orderOptions)\n\n    // Log the intended checkout constraint in Prisma locked explicitly to this student\n    await prisma.payment.create({\n      data: {\n        studentId: student.id,\n        razorpayOrderId: order.id,\n        amount: amount,\n        type: type,\n        status: \"PENDING\"\n      }\n    })\n\n    return NextResponse.json({\n      orderId: order.id,\n      amount: order.amount,\n      currency: order.currency,\n      key: process.env.RAZORPAY_KEY_ID // Safe to expose public key\n    })\n\n  } catch (error: any) {\n    logger.error(\"Payment Flow Error:\", error)\n    return handlePrismaError(error, \"Failed to initialize payment gateway\")\n  }\n}\n\n",
+    "hash": "ff32abf32e9ac1e40ee11bd87f751944",
+    "size": 2454,
+    "tokens": 613,
+    "modified_time": "2026-04-15T15:24:04.8741051+05:30",
+    "language": "typescript",
+    "imports": [
+      "@/lib/logger",
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/apiAuth",
+      "@/lib/razorpay",
+      "@/lib/validations",
+      "@/lib/prisma-error"
+    ],
+    "functions": [
+      "POST"
+    ]
+  }
+}

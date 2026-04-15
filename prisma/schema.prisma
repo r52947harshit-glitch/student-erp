@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  student   Student?
+  teacher   Teacher?
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+model Student {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  user         User         @relation(fields: [userId], references: [id])
+  class        String
+  section      String
+  rollNo       String       @unique
+  parentName   String
+  contact      String
+  address      String
+  photoUrl     String?
+  dob          DateTime
+  attendance   Attendance[]
+  results      Result[]
+  payments     Payment[]
+}
+
+model Teacher {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  assignedClasses String[]
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  date      DateTime
+  status    AttendanceStatus
+  markedBy  String
+  createdAt DateTime         @default(now())
+
+  @@unique([studentId, date])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+model Result {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id])
+  subject       String
+  examType      ExamType
+  marksObtained Float
+  totalMarks    Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([studentId, subject, examType])
+}
+
+enum ExamType {
+  UNIT_TEST
+  HALF_YEARLY
+  ANNUAL
+}
+
+model FeeStructure {
+  id       String   @id @default(cuid())
+  class    String
+  type     String
+  amount   Float
+  dueDate  DateTime
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  studentId         String
+  student           Student       @relation(fields: [studentId], references: [id])
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?
+  amount            Float
+  status            PaymentStatus @default(PENDING)
+  type              String
+  verifiedAt        DateTime?
+  createdAt         DateTime      @default(now())
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model Notice {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  category    String
+  targetRole  String    @default("ALL")
+  postedBy    String
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  performedBy String
+  targetId    String
+  note        String?
+  timestamp   DateTime @default(now())
+}
