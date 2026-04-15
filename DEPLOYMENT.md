@@ -104,6 +104,24 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=""  # Same as RAZORPAY_KEY_ID
 
 ## 🗄️ Step 5: Database Setup
 
+### ⚠️ IMPORTANT: Prisma Build Fix Applied
+
+Your `package.json` has been updated with:
+
+```json
+{
+  "scripts": {
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate"
+  }
+}
+```
+
+This ensures:
+- ✅ Prisma Client is regenerated on every build
+- ✅ Vercel cache issues are avoided
+- ✅ `node_modules` are properly initialized
+
 ### Run Prisma Migrations on Production
 
 After first deployment, run:
