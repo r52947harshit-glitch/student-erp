@@ -16,8 +16,12 @@ export async function GET(request: Request) {
   if (!className || !dateStr) return NextResponse.json({ error: "Missing parameters" }, { status: 400 })
 
   if (session.user.role === "TEACHER") {
-    const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })
-    if (!teacher?.assignedClasses.includes(className)) {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: session.user.id },
+      include: { assignedClasses: true }
+    })
+    const isAssigned = teacher?.assignedClasses.some(ac => ac.className === className)
+    if (!isAssigned) {
       return NextResponse.json({ error: "Unauthorized access to this class" }, { status: 403 })
     }
   }
@@ -61,7 +65,10 @@ export async function POST(request: Request) {
     const payloadDate = new Date(date)
 
     if (session.user.role === "TEACHER") {
-      const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })
+      const teacher = await prisma.teacher.findUnique({
+        where: { userId: session.user.id },
+        include: { assignedClasses: true }
+      })
       
       // Verify first student's class to ensure teacher is assigned to it
       const sampleStudent = await prisma.student.findUnique({
@@ -69,7 +76,8 @@ export async function POST(request: Request) {
         select: { class: true }
       })
       
-      if (!sampleStudent || !teacher?.assignedClasses.includes(sampleStudent.class)) {
+      const isAssigned = teacher?.assignedClasses.some(ac => ac.className === sampleStudent?.class)
+      if (!sampleStudent || !isAssigned) {
         return NextResponse.json({ error: "Unauthorized to mark attendance for this class" }, { status: 403 })
       }
     }

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { CalendarCheck, Bell, CreditCard, FileSpreadsheet, BadgeCheck, AlertTriangle } from "lucide-react"
+import { CalendarCheck, Bell, CreditCard, FileSpreadsheet, BadgeCheck, AlertTriangle, BookOpen } from "lucide-react"
 
 export default function StudentDashboard() {
   const [data, setData] = useState<any>(null)
@@ -35,25 +35,39 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-6 p-6 bg-blue-600 text-white rounded-xl shadow-lg border border-blue-700">
+      <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-blue-600 text-white rounded-xl shadow-lg border border-blue-700">
         <div className="flex-shrink-0">
           {student.photoUrl ? (
             <img src={student.photoUrl} alt="Student" className="w-24 h-24 rounded-full border-4 border-blue-400 object-cover shadow-sm" />
           ) : (
-            <div className="w-24 h-24 rounded-full border-4 border-blue-400 bg-blue-500 flex items-center justify-center text-3xl font-bold uppercase shadow-sm">
+            <div 
+              className="w-24 h-24 rounded-full border-4 border-blue-400 flex items-center justify-center text-3xl font-bold uppercase shadow-sm"
+              style={{ backgroundColor: (function(str: string) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+                const color = Math.floor(Math.abs(Math.sin(hash) * 16777215)).toString(16);
+                return "#" + "000000".substring(0, 6 - color.length) + color;
+              })(student.name) }}
+            >
               {student.name.charAt(0)}
             </div>
           )}
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 text-center sm:text-left">
           <h2 className="text-3xl font-bold tracking-tight">{student.name}</h2>
           <p className="text-blue-200 font-medium tracking-wide">
             Class {student.class}-{student.section} | Roll No: {student.rollNo}
           </p>
+          <Link 
+            href="/student/profile" 
+            className="inline-block text-xs font-bold uppercase tracking-widest text-blue-100 hover:text-white mt-2 border-b border-transparent hover:border-white transition-all"
+          >
+            Update Profile →
+          </Link>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card className="border-blue-100 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-bold text-blue-900">Attendance</CardTitle>
@@ -103,6 +117,23 @@ export default function StudentDashboard() {
             <p className="text-xs text-muted-foreground mt-1">Unread alerts to review</p>
           </CardContent>
         </Card>
+
+        <Link href="/student/assignments" className="block transition-transform hover:scale-[1.02]">
+          <Card className={`shadow-sm h-full cursor-pointer ${metrics.assignmentsDueSoon > 0 ? 'border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 hover:border-orange-300' : 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 hover:border-emerald-300'}`}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className={`text-sm font-bold ${metrics.assignmentsDueSoon > 0 ? 'text-orange-900' : 'text-emerald-900'}`}>Assignments Due</CardTitle>
+              <BookOpen className={`h-4 w-4 ${metrics.assignmentsDueSoon > 0 ? 'text-orange-500' : 'text-emerald-500'}`} />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${metrics.assignmentsDueSoon > 0 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                {metrics.assignmentsDueSoon > 0 ? metrics.assignmentsDueSoon : "0"}
+              </div>
+              <p className={`text-xs mt-1 font-medium ${metrics.assignmentsDueSoon > 0 ? 'text-orange-700' : 'text-emerald-700'}`}>
+                {metrics.assignmentsDueSoon > 0 ? "Due in next 3 days!" : "All caught up!"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div>

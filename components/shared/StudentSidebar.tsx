@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Bell, CreditCard, CalendarCheck, FileSpreadsheet, LogOut, Menu } from "lucide-react"
+import { LayoutDashboard, Bell, CreditCard, CalendarCheck, FileSpreadsheet, LogOut, Menu, BookOpen, UserCircle } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
@@ -30,6 +30,8 @@ export function StudentSidebar() {
     { name: "Pay Fee", href: "/student/fee", icon: CreditCard },
     { name: "Attendance", href: "/student/attendance", icon: CalendarCheck },
     { name: "Results", href: "/student/results", icon: FileSpreadsheet },
+    { name: "Assignments", href: "/student/assignments", icon: BookOpen },
+    { name: "My Profile", href: "/student/profile", icon: UserCircle },
   ]
 
   const NavLinks = () => (
@@ -54,28 +56,50 @@ export function StudentSidebar() {
     </nav>
   )
 
-  const UserInfo = () => (
-    <div className="mt-auto border-t border-blue-200 p-4">
-      <div className="flex flex-col text-sm text-blue-800 mb-4">
-        <span className="font-bold">{session?.user?.name || "Student"}</span>
-        {studentData ? (
-          <span className="text-xs text-blue-600 mt-1 font-medium bg-blue-100 rounded px-2 w-max p-1">
-            Class {studentData.class}-{studentData.section} | Roll: {studentData.rollNo}
-          </span>
-        ) : (
-          <span className="text-xs text-blue-600 mt-1">{session?.user?.email}</span>
-        )}
+  const UserInfo = () => {
+    // Helper to generate color for initial avatar
+    const stringToColor = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      const color = Math.floor(Math.abs(Math.sin(hash) * 16777215)).toString(16);
+      return "#" + "000000".substring(0, 6 - color.length) + color;
+    };
+    
+    return (
+      <div className="mt-auto border-t border-blue-200 p-4">
+        <Link href="/student/profile" className="flex items-center gap-3 text-sm text-blue-800 mb-4 hover:bg-blue-100 p-2 rounded-md transition-colors cursor-pointer">
+          {studentData?.photoUrl ? (
+            <img src={studentData.photoUrl} alt="Photo" className="w-8 h-8 rounded-full object-cover border border-blue-300 shrink-0" />
+          ) : (
+            <div 
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white border border-blue-300 shrink-0"
+              style={{ backgroundColor: session?.user?.name ? stringToColor(session.user.name) : "#cbd5e1" }}
+            >
+              {session?.user?.name?.charAt(0) || "S"}
+            </div>
+          )}
+          <div className="flex flex-col overflow-hidden">
+            <span className="font-bold truncate">{session?.user?.name || "Student"}</span>
+            {studentData ? (
+              <span className="text-xs text-blue-600 font-medium truncate">
+                Class {studentData.class}-{studentData.section}
+              </span>
+            ) : (
+              <span className="text-xs text-blue-600 truncate">{session?.user?.email}</span>
+            )}
+          </div>
+        </Link>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-900" 
+          onClick={() => signOut({ callbackUrl: "/login" })}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Logout
+        </Button>
       </div>
-      <Button 
-        variant="outline" 
-        className="w-full justify-start text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-900" 
-        onClick={() => signOut({ callbackUrl: "/login" })}
-      >
-        <LogOut className="mr-2 h-4 w-4" />
-        Logout
-      </Button>
-    </div>
-  )
+    )
+  }
 
   return (
     <>

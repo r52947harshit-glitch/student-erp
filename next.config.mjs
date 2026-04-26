@@ -6,6 +6,11 @@ const nextConfig = {
     // These are mostly TypeScript type warnings that don't affect runtime
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '52mb',  // Slightly above 50MB for headers overhead
+    },
+  },
 };
 
 export default nextConfig;

@@ -19,14 +19,18 @@ export async function POST(request: Request) {
     const payload = parseResult.data
 
     if (session.user.role === "TEACHER") {
-      const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })
+      const teacher = await prisma.teacher.findUnique({
+        where: { userId: session.user.id },
+        include: { assignedClasses: true }
+      })
       
       const sampleStudent = await prisma.student.findUnique({
         where: { id: payload[0].studentId },
         select: { class: true }
       })
       
-      if (!sampleStudent || !teacher?.assignedClasses.includes(sampleStudent.class)) {
+      const isAssigned = teacher?.assignedClasses.some(ac => ac.className === sampleStudent?.class)
+      if (!sampleStudent || !isAssigned) {
         return NextResponse.json({ error: "Unauthorized to edit results for this class" }, { status: 403 })
       }
     }

@@ -17,6 +17,8 @@ export default function TeacherProfile() {
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -67,32 +69,49 @@ export default function TeacherProfile() {
     }
   }
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "Error", description: "File exceeds 2MB limit", variant: "destructive" })
+      toast({ title: "Error", description: "Image must be under 2MB", variant: "destructive" })
       return
     }
 
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      toast({ title: "Error", description: "Only JPG and PNG images are allowed", variant: "destructive" })
-      return
+    setPhotoFile(file)
+    const objectUrl = URL.createObjectURL(file)
+    setPhotoPreview(objectUrl)
+  }
+
+  const cancelPhotoUpload = () => {
+    setPhotoFile(null)
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview)
+      setPhotoPreview(null)
     }
+  }
+
+  const handlePhotoUpload = async () => {
+    if (!photoFile) return
 
     setUploading(true)
     try {
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("photo", photoFile)
+      
       const res = await fetch("/api/teachers/me/photo", {
         method: "POST",
         body: formData
+        // Do NOT set Content-Type header! Let browser set it.
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+      
       setTeacher((prev: any) => ({ ...prev, photoUrl: data.photoUrl }))
       toast({ title: "Success", description: "Profile photo updated" })
+      
+      // Cleanup
+      cancelPhotoUpload()
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" })
     } finally {
@@ -112,20 +131,40 @@ export default function TeacherProfile() {
         {/* LEFT CARD - Profile Display */}
         <Card className="col-span-1">
           <CardContent className="pt-6 flex flex-col items-center text-center">
-            <div className="relative mb-4">
-              {teacher.photoUrl ? (
+            <div className="relative mb-4 flex flex-col items-center">
+              {photoPreview ? (
+                <img src={photoPreview} alt="Preview" className="w-32 h-32 rounded-full object-cover border-4 border-blue-100" />
+              ) : teacher.photoUrl ? (
                 <img src={teacher.photoUrl} alt="Profile" className="w-32 h-32 rounded-full object-cover border-4 border-slate-100" />
               ) : (
                 <div className="w-32 h-32 rounded-full bg-slate-200 flex items-center justify-center text-4xl font-bold text-slate-500 border-4 border-slate-100">
                   {teacher.user.name.charAt(0)}
                 </div>
               )}
-              <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-sm">
-                <Camera className="w-4 h-4" />
-                <input id="photo-upload" type="file" accept="image/jpeg,image/png" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-              </label>
+              
+              {!photoFile && (
+                <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-sm">
+                  <Camera className="w-4 h-4" />
+                  <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileSelect} disabled={uploading} />
+                </label>
+              )}
             </div>
-            {uploading && <span className="text-xs text-muted-foreground mb-2">Uploading photo...</span>}
+
+            {photoFile && (
+              <div className="flex flex-col items-center gap-2 mb-4 w-full">
+                <span className="text-xs font-medium text-slate-500">
+                  Selected: {(photoFile.size / 1024 / 1024).toFixed(2)} MB
+                </span>
+                <div className="flex gap-2 w-full">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={cancelPhotoUpload} disabled={uploading}>Cancel</Button>
+                  <Button size="sm" className="flex-1" onClick={handlePhotoUpload} disabled={uploading}>
+                    {uploading ? "Uploading..." : "Upload Photo"}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {!photoFile && <span className="text-xs text-muted-foreground mb-4">JPG, PNG or WebP, max 2MB</span>}
             
             <h3 className="text-xl font-bold">{teacher.user.name}</h3>
             <p className="text-sm text-muted-foreground mb-4">{teacher.employeeId}</p>

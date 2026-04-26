@@ -1,12 +1,3 @@
-// REQUIRED SUPABASE SETUP:
-// Go to Supabase Dashboard → Storage → teacher-photos bucket
-// → Make bucket PUBLIC so photos display correctly
-// → If bucket does not exist, create it:
-//   Name: teacher-photos
-//   Public: YES (so photo URLs work without signed URLs)
-//   Max file size: 2MB
-//   Allowed MIME types: image/jpeg, image/png, image/webp
-
 import { NextResponse } from "next/server"
 import { validateSession } from "@/lib/apiAuth"
 import { prisma } from "@/lib/prisma"
@@ -16,17 +7,17 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const MAX_SIZE_BYTES = 2 * 1024 * 1024 // 2MB
 
 export async function POST(request: Request) {
-  const { errorResponse, session } = await validateSession(["TEACHER"])
+  const { errorResponse, session } = await validateSession(["STUDENT"])
   if (errorResponse || !session) return errorResponse
 
   try {
-    // Get teacher record from session
-    const teacher = await prisma.teacher.findUnique({
+    // Get student record from session
+    const student = await prisma.student.findUnique({
       where: { userId: session.user.id },
     })
-    if (!teacher) {
+    if (!student) {
       return NextResponse.json(
-        { error: "Teacher not found" },
+        { error: "Student not found" },
         { status: 404 }
       )
     }
@@ -42,7 +33,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate mime type server-side (not just extension)
+    // Validate mime type server-side
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: "Only JPG, PNG and WebP images are allowed" },
@@ -64,16 +55,15 @@ export async function POST(request: Request) {
 
     // Build unique file path
     const ext = file.type.split("/")[1]
-    const filePath = `teachers/${teacher.id}/${Date.now()}.${ext}`
+    const filePath = `students/${student.id}/${Date.now()}.${ext}`
 
     // Delete old photo from storage if it exists
-    if (teacher.photoUrl) {
+    if (student.photoUrl) {
       try {
-        // Extract path from old URL
-        const oldPath = teacher.photoUrl.split("teacher-photos/")[1]
+        const oldPath = student.photoUrl.split("student-photos/")[1]
         if (oldPath) {
           await supabaseAdmin.storage
-            .from("teacher-photos")
+            .from("student-photos")
             .remove([oldPath])
         }
       } catch {
@@ -82,9 +72,8 @@ export async function POST(request: Request) {
     }
 
     // Upload new photo using supabaseAdmin (service role key)
-    // This bypasses RLS — never use anon key for uploads
     const { error: uploadError } = await supabaseAdmin.storage
-      .from("teacher-photos")
+      .from("student-photos")
       .upload(filePath, buffer, {
         contentType: file.type,
         upsert: true,
@@ -99,15 +88,26 @@ export async function POST(request: Request) {
 
     // Get public URL for the uploaded photo
     const { data: urlData } = supabaseAdmin.storage
-      .from("teacher-photos")
+      .from("student-photos")
       .getPublicUrl(filePath)
 
     const photoUrl = urlData.publicUrl
 
-    // Update teacher record in DB
-    await prisma.teacher.update({
-      where: { id: teacher.id },
-      data: { photoUrl },
+    // Update student record in DB
+    await prisma.$transaction(async (tx) => {
+      await tx.student.update({
+        where: { id: student.id },
+        data: { photoUrl },
+      })
+
+      await tx.auditLog.create({
+        data: {
+          action: "STUDENT_PHOTO_UPDATED",
+          performedBy: session.user.id,
+          targetId: student.id,
+          note: `Student ${student.rollNo} updated their profile photo`,
+        },
+      })
     })
 
     return NextResponse.json({ photoUrl })

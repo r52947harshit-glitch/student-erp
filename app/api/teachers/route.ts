@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.errors[0].message },
+        { error: parseResult.error.issues[0].message },
         { status: 400 }
       );
     }

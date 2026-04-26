@@ -56,6 +56,26 @@ export async function GET() {
       where: { targetRole: { in: ["ALL", "STUDENT"] } }
     })
 
+    // Assignments Due Soon
+    const threeDaysFromNow = new Date()
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
+    const now = new Date()
+
+    const assignmentsDueSoon = await prisma.assignment.count({
+      where: {
+        className: student.class,
+        dueDate: {
+          gte: now,
+          lte: threeDaysFromNow
+        },
+        submissions: {
+          none: {
+            studentId: student.id
+          }
+        }
+      }
+    })
+
     return NextResponse.json({
       student: {
         id: student.id,
@@ -70,7 +90,8 @@ export async function GET() {
         attendancePercentage: attendancePercentage.toFixed(1),
         hasPendingFees,
         lastResultPercentage: lastResultPercentage ? lastResultPercentage.toFixed(1) : null,
-        totalNotices
+        totalNotices,
+        assignmentsDueSoon
       }
     })
   } catch (error) {

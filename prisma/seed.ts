@@ -37,7 +37,18 @@ async function main() {
     update: {},
     create: {
       userId: teacherUser.id,
-      assignedClasses: ["Nursery", "1", "5"] // Sample assigned classes
+      employeeId: "TCH-001",
+      phone: "9876543210",
+      address: "123 School Lane",
+      qualification: "M.Sc B.Ed",
+      joiningDate: new Date(),
+      assignedClasses: {
+        create: [
+          { className: "Nursery", subjects: ["All"] },
+          { className: "1", subjects: ["Math", "English"] },
+          { className: "5", subjects: ["Science"] }
+        ]
+      }
     }
   })
 

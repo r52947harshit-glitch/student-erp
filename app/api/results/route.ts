@@ -16,8 +16,12 @@ export async function GET(request: Request) {
   }
 
   if (session.user.role === "TEACHER") {
-    const teacher = await prisma.teacher.findUnique({ where: { userId: session.user.id } })
-    if (!teacher?.assignedClasses.includes(className)) {
+    const teacher = await prisma.teacher.findUnique({
+      where: { userId: session.user.id },
+      include: { assignedClasses: true }
+    })
+    const isAssigned = teacher?.assignedClasses.some(ac => ac.className === className)
+    if (!isAssigned) {
       return NextResponse.json({ error: "Unauthorized access to this class" }, { status: 403 })
     }
   }

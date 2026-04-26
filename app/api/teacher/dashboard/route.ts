@@ -10,6 +10,7 @@ export async function GET() {
   try {
     const teacher = await prisma.teacher.findUnique({
       where: { userId: session.user.id },
+      include: { assignedClasses: true }
     })
 
     if (!teacher) return NextResponse.json({ error: "Teacher profile not found" }, { status: 404 })
@@ -21,15 +22,15 @@ export async function GET() {
     const todayEnd = endOfDay(new Date())
 
     const attendanceStatus = await Promise.all(
-      assignedClasses.map(async (className) => {
+      assignedClasses.map(async (ac) => {
         const markedRecord = await prisma.attendance.findFirst({
           where: {
             date: { gte: todayStart, lte: todayEnd },
-            student: { class: className }
+            student: { class: ac.className }
           }
         })
         return {
-          class: className,
+          class: ac.className,
           isMarked: !!markedRecord
         }
       })
@@ -39,9 +40,18 @@ export async function GET() {
     // An approximation is getting counts of total results entered by this teacher.
     // For simplicity of MVP metric, we just pass down standard analytics payload.
 
+    // Check for pending reviews
+    const pendingReviews = await prisma.assignmentSubmission.count({
+      where: {
+        status: "SUBMITTED",
+        assignment: { teacherId: teacher.id }
+      }
+    })
+
     return NextResponse.json({
       teacher,
-      attendanceStatus
+      attendanceStatus,
+      pendingReviews
     })
   } catch (error) {
     return NextResponse.json({ error: "Server Error" }, { status: 500 })

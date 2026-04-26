@@ -41,6 +41,7 @@ model Student {
   attendance   Attendance[]
   results      Result[]
   payments     Payment[]
+  submissions  AssignmentSubmission[]
 }
 
 model Teacher {
@@ -54,6 +55,7 @@ model Teacher {
   joiningDate      DateTime
   photoUrl         String?
   assignedClasses  TeacherClass[]
+  assignments      Assignment[]
 }
 
 model TeacherClass {
@@ -149,4 +151,43 @@ model AuditLog {
   targetId    String
   note        String?
   timestamp   DateTime @default(now())
+}
+
+model Assignment {
+  id          String                 @id @default(cuid())
+  teacherId   String
+  teacher     Teacher                @relation(fields: [teacherId], references: [id])
+  className   String
+  subject     String
+  title       String
+  description String
+  dueDate     DateTime
+  fileUrl     String?
+  fileName    String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  submissions AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id           String           @id @default(cuid())
+  assignmentId String
+  assignment   Assignment       @relation(fields: [assignmentId], references: [id])
+  studentId    String
+  student      Student          @relation(fields: [studentId], references: [id])
+  fileUrl      String
+  fileName     String
+  fileSize     Int
+  status       SubmissionStatus @default(SUBMITTED)
+  teacherNote  String?
+  submittedAt  DateTime         @default(now())
+  reviewedAt   DateTime?
+
+  @@unique([assignmentId, studentId])
+}
+
+enum SubmissionStatus {
+  PENDING
+  SUBMITTED
+  COMPLETED
 }

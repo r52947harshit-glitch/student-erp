@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { CalendarCheck, FileSpreadsheet, Bell, CheckCircle2, XCircle, User } from "lucide-react"
+import { CalendarCheck, FileSpreadsheet, Bell, CheckCircle2, XCircle, User, ClipboardList } from "lucide-react"
 
 export default function TeacherDashboard() {
   const { data: session } = useSession()
@@ -58,8 +58,25 @@ export default function TeacherDashboard() {
           </CardContent>
         </Card>
 
+        {/* Pending Reviews Card */}
+        <Link href="/teacher/assignments" className="block transition-transform hover:scale-[1.02]">
+          <Card className="border-emerald-100 shadow-sm h-full bg-gradient-to-br from-amber-50 to-orange-50 cursor-pointer hover:border-amber-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-amber-900 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" /> Pending Reviews
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col">
+                <span className="text-4xl font-black text-amber-600">{data.pendingReviews || 0}</span>
+                <span className="text-sm text-amber-800 font-medium mt-1">Assignments waiting for review</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
         {/* Attendance Status Card */}
-        <Card className="border-emerald-100 shadow-sm col-span-1 lg:col-span-2">
+        <Card className="border-emerald-100 shadow-sm col-span-1 md:col-span-2 lg:col-span-3">
           <CardHeader className="bg-emerald-50/50">
             <CardTitle className="text-lg">Today's Attendance Overview</CardTitle>
             <CardDescription>Status of rolls called for today</CardDescription>
