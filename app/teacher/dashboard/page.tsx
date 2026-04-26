@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { CalendarCheck, FileSpreadsheet, Bell, CheckCircle2, XCircle } from "lucide-react"
+import { CalendarCheck, FileSpreadsheet, Bell, CheckCircle2, XCircle, User } from "lucide-react"
 
 export default function TeacherDashboard() {
   const { data: session } = useSession()
@@ -43,12 +43,13 @@ export default function TeacherDashboard() {
             <CardDescription>You are assigned as class teacher to:</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2">
               {teacher?.assignedClasses?.length > 0 ? (
-                teacher.assignedClasses.map((c: string) => (
-                  <span key={c} className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-md text-sm font-medium">
-                    Class {c}
-                  </span>
+                teacher.assignedClasses.map((ac: any) => (
+                  <div key={ac.id} className="p-3 bg-emerald-50 border border-emerald-100 rounded-md">
+                    <span className="font-bold text-emerald-900 block">Class {ac.className}</span>
+                    <span className="text-xs text-emerald-700">{ac.subjects.join(", ")}</span>
+                  </div>
                 ))
               ) : (
                 <span className="text-sm text-muted-foreground">No classes assigned.</span>
@@ -90,7 +91,13 @@ export default function TeacherDashboard() {
 
       <div>
         <h3 className="text-xl font-bold mt-8 mb-4 text-emerald-900">Quick Actions</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link href="/teacher/profile">
+            <Button variant="outline" className="w-full h-24 border-emerald-200 text-emerald-800 hover:bg-emerald-50 flex flex-col gap-2 shadow-sm">
+              <User className="w-6 h-6 text-emerald-600" />
+              My Profile
+            </Button>
+          </Link>
           <Link href="/teacher/attendance">
             <Button className="w-full h-24 bg-emerald-600 hover:bg-emerald-700 flex flex-col gap-2 shadow-md">
               <CalendarCheck className="w-6 h-6" />

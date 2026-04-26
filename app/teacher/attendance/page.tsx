@@ -37,8 +37,9 @@ export default function MarkAttendance() {
       .then(res => res.json())
       .then(d => {
         if (d.teacher?.assignedClasses) {
-          setClasses(d.teacher.assignedClasses)
-          if (d.teacher.assignedClasses.length > 0) setSelectedClass(d.teacher.assignedClasses[0])
+          const classNames = d.teacher.assignedClasses.map((ac: any) => ac.className)
+          setClasses(classNames)
+          if (classNames.length > 0) setSelectedClass(classNames[0])
         }
       })
   }, [])

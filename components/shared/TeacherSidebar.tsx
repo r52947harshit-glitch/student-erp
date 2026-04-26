@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { CalendarCheck, LayoutDashboard, FileSpreadsheet, Bell, LogOut, Menu } from "lucide-react"
+import { CalendarCheck, LayoutDashboard, FileSpreadsheet, Bell, LogOut, Menu, User } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
@@ -24,6 +24,7 @@ export function TeacherSidebar() {
 
   const links = [
     { name: "Dashboard", href: "/teacher/dashboard", icon: LayoutDashboard },
+    { name: "My Profile", href: "/teacher/profile", icon: User },
     { name: "Mark Attendance", href: "/teacher/attendance", icon: CalendarCheck },
     { name: "Enter Results", href: "/teacher/results", icon: FileSpreadsheet },
     { name: "Notice Board", href: "/teacher/notice", icon: Bell },

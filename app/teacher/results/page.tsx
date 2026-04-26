@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export default function EnterResults() {
   const { toast } = useToast()
   
-  const [classes, setClasses] = useState<string[]>([])
+  const [classesData, setClassesData] = useState<{className: string, subjects: string[]}[]>([])
   const [selectedClass, setSelectedClass] = useState("")
   const [examType, setExamType] = useState("")
   const [subject, setSubject] = useState("")
@@ -26,7 +26,7 @@ export default function EnterResults() {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   
-  const SUBJECTS = ["Math", "Science", "English", "History", "Geography"]
+  const availableSubjects = classesData.find(c => c.className === selectedClass)?.subjects || []
   const EXAM_TYPES = ["UNIT_TEST", "HALF_YEARLY", "ANNUAL"]
 
   // Fetch classes
@@ -34,7 +34,9 @@ export default function EnterResults() {
     fetch("/api/teacher/dashboard")
       .then(res => res.json())
       .then(d => {
-        if (d.teacher?.assignedClasses) setClasses(d.teacher.assignedClasses)
+        if (d.teacher?.assignedClasses) {
+          setClassesData(d.teacher.assignedClasses)
+        }
       })
   }, [])
 
@@ -156,8 +158,8 @@ export default function EnterResults() {
               <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
                 <SelectContent>
-                  {classes.map(c => (
-                    <SelectItem key={c} value={c}>Class {c}</SelectItem>
+                  {classesData.map(c => (
+                    <SelectItem key={c.className} value={c.className}>Class {c.className}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -178,7 +180,7 @@ export default function EnterResults() {
               <Select value={subject} onValueChange={setSubject}>
                 <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
                 <SelectContent>
-                  {SUBJECTS.map(s => (
+                  {availableSubjects.map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>

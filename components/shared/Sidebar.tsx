@@ -14,6 +14,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const links = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Manage Students", href: "/admin/students", icon: Users },
+    { name: "Manage Teachers", href: "/admin/teachers", icon: Users },
     { name: "Fee Management", href: "/admin/fee", icon: Receipt },
     { name: "Post Notice", href: "/admin/notice", icon: Flag },
   ]

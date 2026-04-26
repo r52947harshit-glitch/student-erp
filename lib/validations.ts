@@ -47,3 +47,44 @@ export const paymentSchema = z.object({
   amount: z.number().positive("Payment amount must be greater than zero"),
   type: z.string().min(2, "Fee type is required")
 })
+
+export const addTeacherSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(100),
+  email: z.string().email("Invalid email address"),
+  phone: z.string()
+    .regex(/^[6-9]\d{9}$/, "Enter valid 10-digit Indian mobile number"),
+  address: z.string().min(5, "Address too short").max(300),
+  qualification: z.string().min(2),
+  joiningDate: z.string().refine((d) => !isNaN(Date.parse(d)), {
+    message: "Invalid joining date",
+  }),
+  assignedClasses: z.array(
+    z.object({
+      className: z.string(),
+      subjects: z.array(z.string()).min(1, "Select at least one subject"),
+    })
+  ).min(1, "Assign at least one class"),
+})
+
+export const updateTeacherSchema = z.object({
+  name: z.string().min(2).max(100).optional(),
+  phone: z.string()
+    .regex(/^[6-9]\d{9}$/, "Enter valid 10-digit Indian mobile number")
+    .optional(),
+  address: z.string().min(5).max(300).optional(),
+  qualification: z.string().min(2).optional(),
+  assignedClasses: z.array(
+    z.object({
+      className: z.string(),
+      subjects: z.array(z.string()).min(1),
+    })
+  ).optional(),
+})
+
+export const teacherSelfUpdateSchema = z.object({
+  phone: z.string()
+    .regex(/^[6-9]\d{9}$/, "Enter valid 10-digit Indian mobile number")
+    .optional(),
+  address: z.string().min(5).max(300).optional(),
+  qualification: z.string().min(2).optional(),
+})

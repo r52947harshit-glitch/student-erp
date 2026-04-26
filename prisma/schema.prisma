@@ -44,10 +44,26 @@ model Student {
 }
 
 model Teacher {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
-  assignedClasses String[]
+  id               String         @id @default(cuid())
+  userId           String         @unique
+  user             User           @relation(fields: [userId], references: [id])
+  employeeId       String         @unique
+  phone            String
+  address          String
+  qualification    String
+  joiningDate      DateTime
+  photoUrl         String?
+  assignedClasses  TeacherClass[]
+}
+
+model TeacherClass {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  className String
+  subjects  String[]
+
+  @@unique([teacherId, className])
 }
 
 model Attendance {

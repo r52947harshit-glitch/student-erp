@@ -14,6 +14,12 @@ export async function GET() {
       where: { user: { isActive: true } }
     })
 
+    // 1b. Total Active Teachers
+    const totalTeachers = await prisma.user.count({
+      where: { role: "TEACHER", isActive: true }
+    })
+
+
     // 2. Fee Collected This Month
     const thisMonthStart = startOfMonth(new Date())
     const feeCollectedResult = await prisma.payment.aggregate({
@@ -96,6 +102,7 @@ export async function GET() {
     return NextResponse.json({
       metrics: {
         totalStudents,
+        totalTeachers,
         feeCollected,
         pendingFeeCount,
         attendanceSummary
