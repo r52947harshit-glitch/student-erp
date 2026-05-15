@@ -45,10 +45,10 @@ model Student {
 }
 
 model Teacher {
-  id               String         @id @default(cuid())
-  userId           String         @unique
-  user             User           @relation(fields: [userId], references: [id])
-  employeeId       String         @unique
+  id               String               @id @default(cuid())
+  userId           String               @unique
+  user             User                 @relation(fields: [userId], references: [id])
+  employeeId       String               @unique
   phone            String
   address          String
   qualification    String
@@ -56,6 +56,9 @@ model Teacher {
   photoUrl         String?
   assignedClasses  TeacherClass[]
   assignments      Assignment[]
+  attendance       TeacherAttendance[]
+  salaryConfig     TeacherSalaryConfig?
+  salaryPayments   SalaryPayment[]
 }
 
 model TeacherClass {
@@ -190,4 +193,74 @@ enum SubmissionStatus {
   PENDING
   SUBMITTED
   COMPLETED
+}
+
+// ━━━ Teacher Salary Management ━━━
+
+model TeacherAttendance {
+  id        String                  @id @default(cuid())
+  teacherId String
+  teacher   Teacher                 @relation(fields: [teacherId], references: [id])
+  date      DateTime
+  status    TeacherAttendanceStatus
+  markedBy  String
+  note      String?
+  createdAt DateTime                @default(now())
+
+  @@unique([teacherId, date])
+}
+
+enum TeacherAttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  PAID_LEAVE
+  UNPAID_LEAVE
+}
+
+model TeacherSalaryConfig {
+  id                    String   @id @default(cuid())
+  teacherId             String   @unique
+  teacher               Teacher  @relation(fields: [teacherId], references: [id])
+  baseSalary            Float
+  accountHolderName     String
+  bankAccountNumber     String
+  ifscCode              String
+  bankName              String
+  razorpayContactId     String?
+  razorpayFundAccountId String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model SalaryPayment {
+  id               String              @id @default(cuid())
+  teacherId        String
+  teacher          Teacher             @relation(fields: [teacherId], references: [id])
+  month            Int
+  year             Int
+  baseSalary       Float
+  totalWorkingDays Int
+  presentDays      Float
+  halfDays         Float
+  paidLeaveDays    Float
+  unpaidLeaveDays  Float
+  absentDays       Float
+  deductionAmount  Float
+  netSalary        Float
+  razorpayPayoutId String?
+  status           SalaryPaymentStatus @default(PENDING)
+  failureReason    String?
+  processedBy      String
+  processedAt      DateTime?
+  createdAt        DateTime            @default(now())
+
+  @@unique([teacherId, month, year])
+}
+
+enum SalaryPaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
 }

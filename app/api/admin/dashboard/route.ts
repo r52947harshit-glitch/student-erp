@@ -99,13 +99,26 @@ export async function GET() {
       value: item._count
     }))
 
+    // Salary Metrics
+    const currentMonth = new Date().getMonth() + 1
+    const currentYear = new Date().getFullYear()
+
+    const activeTeachersWithConfig = await prisma.teacherSalaryConfig.count()
+    const paidThisMonth = await prisma.salaryPayment.findMany({
+      where: { month: currentMonth, year: currentYear, status: "PAID" },
+    })
+    const totalSalaryPaid = paidThisMonth.reduce((sum, p) => sum + p.netSalary, 0)
+    const salaryDueCount = activeTeachersWithConfig - paidThisMonth.length
+
     return NextResponse.json({
       metrics: {
         totalStudents,
         totalTeachers,
         feeCollected,
         pendingFeeCount,
-        attendanceSummary
+        attendanceSummary,
+        salaryDueCount: Math.max(0, salaryDueCount),
+        totalSalaryPaid,
       },
       charts: {
         feeCollection: feeCollectionChart,

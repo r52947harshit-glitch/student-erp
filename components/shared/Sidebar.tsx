@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Receipt, Flag, LogOut } from "lucide-react"
+import { LayoutDashboard, Users, Receipt, Flag, LogOut, Banknote } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "../ui/button"
 
@@ -15,6 +15,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Manage Students", href: "/admin/students", icon: Users },
     { name: "Manage Teachers", href: "/admin/teachers", icon: Users },
+    { name: "Teacher Salary", href: "/admin/salary", icon: Banknote },
     { name: "Fee Management", href: "/admin/fee", icon: Receipt },
     { name: "Post Notice", href: "/admin/notice", icon: Flag },
   ]
