@@ -59,6 +59,7 @@ model Teacher {
   attendance       TeacherAttendance[]
   salaryConfig     TeacherSalaryConfig?
   salaryPayments   SalaryPayment[]
+  classTeacher     ClassTeacher?
 }
 
 model TeacherClass {
@@ -69,6 +70,15 @@ model TeacherClass {
   subjects  String[]
 
   @@unique([teacherId, className])
+}
+
+model ClassTeacher {
+  id         String   @id @default(cuid())
+  className  String   @unique
+  teacherId  String   @unique
+  teacher    Teacher  @relation(fields: [teacherId], references: [id])
+  assignedAt DateTime @default(now())
+  assignedBy String   @default("system")
 }
 
 model Attendance {

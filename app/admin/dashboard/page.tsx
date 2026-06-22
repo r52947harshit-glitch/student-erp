@@ -1,9 +1,6 @@
-
 "use client"
 
 import logger from "@/lib/logger"
-
-
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, IndianRupee, Clock, CheckCircle, GraduationCap, Banknote, AlertCircle } from "lucide-react"
@@ -12,6 +9,9 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { StatCard } from "@/components/shared/StatCard"
+import { formatCurrency } from "@/lib/formatters"
 
 export default function AdminDashboard() {
   const [data, setData] = useState<any>(null)
@@ -31,97 +31,71 @@ export default function AdminDashboard() {
   }, [])
 
   if (loading) return <LoadingSpinner />
-  if (!data || data.error) return <div className="p-4 text-red-500">Failed to load dashboard data.</div>
+  if (!data || data.error) return <div className="p-4 text-red-500 animate-in fade-in duration-300">Failed to load dashboard data.</div>
 
   const { metrics, charts } = data
   const COLORS = ['#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e']
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader 
+        title="Dashboard Overview" 
+        description="Here's what's happening at your school today."
+      />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Active Students</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalStudents}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-green-50/50 border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-800">Total Active Teachers</CardTitle>
-            <GraduationCap className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">{metrics.totalTeachers || 0}</div>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <StatCard 
+          title="Total Students" 
+          value={metrics.totalStudents} 
+          icon={Users} 
+          color="blue"
+          href="/admin/students"
+        />
+        <StatCard 
+          title="Total Teachers" 
+          value={metrics.totalTeachers || 0} 
+          icon={GraduationCap} 
+          color="green"
+          href="/admin/teachers"
+        />
+        <StatCard 
+          title="Fee Collected (Month)" 
+          value={formatCurrency(metrics.feeCollected)} 
+          icon={IndianRupee} 
+          color="purple"
+          href="/admin/fee"
+        />
+        <StatCard 
+          title="Salary Due" 
+          value={metrics.salaryDueCount || 0} 
+          icon={AlertCircle} 
+          color={metrics.salaryDueCount > 0 ? "red" : "green"}
+          description="Teachers pending this month"
+          href="/admin/salary"
+        />
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fee Collected (This Month)</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{metrics.feeCollected.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Fee Count</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.pendingFeeCount}</div>
-            <p className="text-xs text-muted-foreground">Students with pending fees</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Attendance Today</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.attendanceSummary}</div>
-          </CardContent>
-        </Card>
-
-        <a href="/admin/salary" className="block transition-transform hover:scale-[1.02]">
-          <Card className={`h-full cursor-pointer ${metrics.salaryDueCount > 0 ? 'border-orange-200 bg-orange-50/50' : 'border-green-200 bg-green-50/50'}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Salary Due</CardTitle>
-              <AlertCircle className={`h-4 w-4 ${metrics.salaryDueCount > 0 ? 'text-orange-500' : 'text-green-500'}`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${metrics.salaryDueCount > 0 ? 'text-orange-700' : 'text-green-700'}`}>{metrics.salaryDueCount || 0}</div>
-              <p className="text-xs text-muted-foreground">Teachers pending this month</p>
-            </CardContent>
-          </Card>
-        </a>
-
-        <Card className="bg-blue-50/50 border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800">Salary Paid (Month)</CardTitle>
-            <Banknote className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-900">₹{(metrics.totalSalaryPaid || 0).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total disbursed this month</p>
-          </CardContent>
-        </Card>
+        {/* Additional useful stats */}
+        <StatCard 
+          title="Pending Fees" 
+          value={metrics.pendingFeeCount} 
+          icon={Clock} 
+          color="orange"
+          description="Students with pending fees"
+          href="/admin/fee"
+        />
+        <StatCard 
+          title="Attendance Today" 
+          value={metrics.attendanceSummary} 
+          icon={CheckCircle} 
+          color="blue"
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Monthly Fee Collection</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">Fee collection trends over the past few months</p>
           </CardHeader>
           <CardContent className="h-[300px]">
             {charts.feeCollection?.length > 0 ? (
@@ -142,6 +116,7 @@ export default function AdminDashboard() {
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Distributions by Class</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">Student distribution across different classes</p>
           </CardHeader>
           <CardContent className="h-[300px]">
             {charts.classDistribution?.length > 0 ? (
@@ -174,4 +149,3 @@ export default function AdminDashboard() {
     </div>
   )
 }
-

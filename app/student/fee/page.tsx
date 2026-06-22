@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { CreditCard, Download, Loader2, CheckCircle2, Clock, XCircle } from "lucide-react"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { CreditCard, Download, Loader2, CheckCircle2, Clock, XCircle, Receipt } from "lucide-react"
 
 declare global {
   interface Window {
@@ -188,25 +190,28 @@ export default function PayFee() {
   }
 
   // ── RENDER ──────────────────────────────────────────────────────────
-  if (loading) return <LoadingSpinner />
-
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
-      <div className="space-y-6">
-        <h2 className="text-3xl font-bold tracking-tight text-blue-900">Fee Payment</h2>
+      <div className="space-y-6 animate-in fade-in duration-300 max-w-5xl mx-auto">
+        <PageHeader 
+          title="Fee Portal" 
+          description="Manage your fee payments securely and download digital receipts."
+        />
 
         {/* Success banner */}
         {paymentSuccess && (
-          <Card className="border-green-200 bg-green-50 shadow-md">
-            <CardContent className="flex items-center gap-4 p-6">
-              <CheckCircle2 className="w-10 h-10 text-green-600 shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-bold text-green-900 text-lg">Payment Verified Successfully!</h3>
-                <p className="text-sm text-green-700 mt-1">₹{paymentSuccess.amount} for {paymentSuccess.type} has been confirmed.</p>
+          <Card className="border-emerald-200 bg-emerald-50 shadow-md animate-in slide-in-from-top-4 duration-500">
+            <CardContent className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-6 text-center sm:text-left">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               </div>
-              <Button variant="outline" className="border-green-300 text-green-700 hover:bg-green-100" onClick={() => generateReceipt(paymentSuccess)}>
+              <div className="flex-1">
+                <h3 className="font-bold text-emerald-900 text-lg">Payment Verified Successfully!</h3>
+                <p className="text-sm text-emerald-700 mt-1 font-medium">₹{paymentSuccess.amount.toLocaleString('en-IN')} for {paymentSuccess.type} has been confirmed and updated in your records.</p>
+              </div>
+              <Button className="mt-4 sm:mt-0 bg-emerald-600 hover:bg-emerald-700 shadow-sm" onClick={() => generateReceipt(paymentSuccess)}>
                 <Download className="w-4 h-4 mr-2" />
                 Download Receipt
               </Button>
@@ -216,141 +221,169 @@ export default function PayFee() {
 
         {/* Polling banner */}
         {pollingOrderId && (
-          <Card className="border-blue-200 bg-blue-50 animate-pulse">
-            <CardContent className="flex items-center gap-4 p-6">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin shrink-0" />
-              <div>
-                <h3 className="font-bold text-blue-900">Verifying Payment…</h3>
-                <p className="text-sm text-blue-700">Waiting for bank confirmation. This usually takes a few seconds.</p>
+          <Card className="border-blue-200 bg-blue-50 shadow-md">
+            <CardContent className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-6 text-center sm:text-left">
+              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+                <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-blue-900 text-lg">Verifying Payment Transaction…</h3>
+                <p className="text-sm text-blue-700 mt-1 font-medium">Waiting for bank confirmation. Please don't close this window or refresh the page.</p>
               </div>
             </CardContent>
           </Card>
         )}
 
-        <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="pending">
-              Pending Fees {pendingFees.length > 0 && <Badge className="ml-2 bg-red-500">{pendingFees.length}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="history">Payment History</TabsTrigger>
-          </TabsList>
+        {loading ? (
+          <div className="py-24 flex justify-center"><LoadingSpinner /></div>
+        ) : (
+          <Tabs defaultValue="pending" className="w-full">
+            <TabsList className="grid w-full sm:w-auto grid-cols-2 mb-6 p-1 bg-blue-50 text-blue-800 border border-blue-100 rounded-lg">
+              <TabsTrigger value="pending" className="data-[state=active]:bg-white data-[state=active]:text-blue-900 data-[state=active]:shadow-sm rounded-md transition-all">
+                Pending Fees {pendingFees.length > 0 && <Badge className="ml-2 bg-rose-500 text-white border-0">{pendingFees.length}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="history" className="data-[state=active]:bg-white data-[state=active]:text-blue-900 data-[state=active]:shadow-sm rounded-md transition-all">
+                Payment History
+              </TabsTrigger>
+            </TabsList>
 
-          {/* ── PENDING FEES ── */}
-          <TabsContent value="pending">
-            <Card className="border-blue-100">
-              <CardHeader className="bg-blue-50/50">
-                <CardTitle className="text-lg">Outstanding Fees</CardTitle>
-                <CardDescription>Click "Pay Now" to complete payment via Razorpay</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table className="min-w-[600px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fee Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingFees.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          <CheckCircle2 className="w-8 h-8 mx-auto text-green-500 mb-2" />
-                          All fees cleared! No pending dues.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      pendingFees.map((fee, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-medium">{fee.type}</TableCell>
-                          <TableCell className="font-bold">₹{fee.amount.toLocaleString()}</TableCell>
-                          <TableCell>{format(new Date(fee.dueDate), "PP")}</TableCell>
-                          <TableCell>
-                            <Badge variant="destructive" className="text-xs">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Pending
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              className="bg-blue-600 hover:bg-blue-700"
-                              disabled={payingType === fee.type || !!pollingOrderId}
-                              onClick={() => handlePayNow(fee.type, fee.amount)}
-                            >
-                              {payingType === fee.type ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <CreditCard className="w-4 h-4 mr-1" />
-                                  Pay Now
-                                </>
-                              )}
-                            </Button>
-                          </TableCell>
+            {/* ── PENDING FEES ── */}
+            <TabsContent value="pending" className="mt-0">
+              <Card className="border-blue-100 shadow-sm overflow-hidden">
+                <CardHeader className="bg-blue-50/50 border-b border-blue-50 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg text-blue-950">Outstanding Fees</CardTitle>
+                      <CardDescription>Click "Pay Now" to complete your payments securely.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  {pendingFees.length === 0 ? (
+                    <div className="py-16 bg-white">
+                      <EmptyState 
+                        icon={CheckCircle2}
+                        title="All fees cleared!"
+                        description="You have no pending fee dues at the moment."
+                      />
+                    </div>
+                  ) : (
+                    <Table className="min-w-[600px]">
+                      <TableHeader className="bg-slate-50/80">
+                        <TableRow className="border-b border-slate-200">
+                          <TableHead className="font-semibold text-slate-700 pl-6 w-[200px]">Fee Type</TableHead>
+                          <TableHead className="font-semibold text-slate-700">Amount</TableHead>
+                          <TableHead className="font-semibold text-slate-700">Due Date</TableHead>
+                          <TableHead className="font-semibold text-slate-700">Status</TableHead>
+                          <TableHead className="text-right pr-6 font-semibold text-slate-700">Action</TableHead>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-slate-100">
+                        {pendingFees.map((fee, idx) => (
+                          <TableRow key={idx} className="hover:bg-slate-50/60 transition-colors">
+                            <TableCell className="font-semibold text-slate-900 pl-6">{fee.type}</TableCell>
+                            <TableCell className="font-bold text-slate-900 text-base">₹{fee.amount.toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-slate-600 font-medium">{format(new Date(fee.dueDate), "PP")}</TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                                <Clock className="w-3 h-3" />
+                                Pending
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <Button
+                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+                                disabled={payingType === fee.type || !!pollingOrderId}
+                                onClick={() => handlePayNow(fee.type, fee.amount)}
+                              >
+                                {payingType === fee.type ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CreditCard className="w-4 h-4 mr-2" />
+                                    Pay Now
+                                  </>
+                                )}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* ── PAYMENT HISTORY ── */}
-          <TabsContent value="history">
-            <Card className="border-blue-100">
-              <CardHeader className="bg-blue-50/50">
-                <CardTitle className="text-lg">Transaction History</CardTitle>
-                <CardDescription>All completed payments with downloadable receipts</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table className="min-w-[600px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Fee Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Receipt</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paidFees.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          No payment records found yet.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paidFees.map((payment, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>{format(new Date(payment.verifiedAt || payment.createdAt), "PP")}</TableCell>
-                          <TableCell className="font-medium">{payment.type}</TableCell>
-                          <TableCell className="font-bold">₹{payment.amount.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              Paid
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800" onClick={() => generateReceipt(payment)}>
-                              <Download className="w-4 h-4 mr-1" />
-                              PDF
-                            </Button>
-                          </TableCell>
+            {/* ── PAYMENT HISTORY ── */}
+            <TabsContent value="history" className="mt-0">
+              <Card className="border-blue-100 shadow-sm overflow-hidden">
+                <CardHeader className="bg-blue-50/50 border-b border-blue-50 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm">
+                      <Receipt className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg text-blue-950">Transaction History</CardTitle>
+                      <CardDescription>All your completed payments and downloadable receipts.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  {paidFees.length === 0 ? (
+                    <div className="py-16 bg-white">
+                      <EmptyState 
+                        icon={Receipt}
+                        title="No payment history"
+                        description="You haven't made any fee payments through the portal yet."
+                      />
+                    </div>
+                  ) : (
+                    <Table className="min-w-[600px]">
+                      <TableHeader className="bg-slate-50/80">
+                        <TableRow className="border-b border-slate-200">
+                          <TableHead className="font-semibold text-slate-700 pl-6">Payment Date</TableHead>
+                          <TableHead className="font-semibold text-slate-700">Fee Type</TableHead>
+                          <TableHead className="font-semibold text-slate-700">Amount Paid</TableHead>
+                          <TableHead className="font-semibold text-slate-700">Status</TableHead>
+                          <TableHead className="text-right pr-6 font-semibold text-slate-700">Receipt</TableHead>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-slate-100">
+                        {paidFees.map((payment, idx) => (
+                          <TableRow key={idx} className="hover:bg-slate-50/60 transition-colors">
+                            <TableCell className="text-slate-600 font-medium pl-6">{format(new Date(payment.verifiedAt || payment.createdAt), "PP")}</TableCell>
+                            <TableCell className="font-semibold text-slate-900">{payment.type}</TableCell>
+                            <TableCell className="font-bold text-emerald-700 text-base">₹{payment.amount.toLocaleString('en-IN')}</TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Successful
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <Button variant="outline" size="sm" className="text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => generateReceipt(payment)}>
+                                <Download className="w-4 h-4 mr-2" />
+                                PDF
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </>
   )

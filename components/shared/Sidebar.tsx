@@ -5,7 +5,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, Users, Receipt, Flag, LogOut, Banknote } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "../ui/button"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getInitials, getAvatarColor } from "@/lib/formatters"
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { data: session } = useSession()
@@ -23,11 +25,32 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <aside className="w-full h-full flex flex-col bg-purple-900 text-purple-100 min-h-screen">
       <div className="p-6 border-b border-purple-800">
-        <h2 className="text-2xl font-bold text-white tracking-tight">School ERP</h2>
-        <p className="text-sm text-purple-300 mt-1">Admin Portal</p>
+        <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+          <span>🏫</span> School ERP
+        </h2>
+        <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-800 text-purple-200 uppercase tracking-wider">
+          Admin
+        </div>
       </div>
       
-      <nav className="flex-1 py-6 space-y-1 px-3">
+      <div className="p-4 border-b border-purple-800 flex items-center gap-3">
+        <Avatar className="h-10 w-10 border border-purple-700">
+          <AvatarImage src={(session?.user as any)?.image || ""} />
+          <AvatarFallback className={cn("text-white text-sm font-medium", getAvatarColor(session?.user?.name || "A"))}>
+            {getInitials(session?.user?.name || "A")}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white truncate">
+            {session?.user?.name || "Admin User"}
+          </p>
+          <p className="text-xs text-purple-300 truncate">
+            {session?.user?.email || "admin@school.com"}
+          </p>
+        </div>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3">
         {links.map((link) => {
           const Icon = link.icon
           const isActive = pathname.startsWith(link.href)
@@ -41,10 +64,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 "flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium",
                 isActive 
                   ? "bg-purple-800 text-white shadow-sm" 
-                  : "hover:bg-purple-800/50 hover:text-white"
+                  : "hover:bg-purple-800/50 hover:text-white text-purple-200"
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4 shrink-0" />
               {link.name}
             </Link>
           )
@@ -52,22 +75,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="p-4 border-t border-purple-800">
-        <div className="flex items-center gap-3 px-3 py-2 mb-4 rounded-md bg-purple-950/50">
-          <div className="h-8 w-8 rounded-full bg-purple-700 flex items-center justify-center font-bold text-white">
-            {session?.user?.name?.charAt(0) || "A"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">
-              {session?.user?.name || "Admin User"}
-            </p>
-            <p className="text-xs text-purple-300 truncate">
-              {session?.user?.email || "admin@school.com"}
-            </p>
-          </div>
-        </div>
         <Button 
-          variant="outline" 
-          className="w-full justify-start text-white bg-transparent border-purple-700 hover:bg-purple-800 hover:text-white"
+          variant="ghost" 
+          className="w-full justify-start text-purple-200 hover:bg-destructive/10 hover:text-destructive"
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
           <LogOut className="mr-2 h-4 w-4" />

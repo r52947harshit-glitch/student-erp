@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
 import { Bell, BellRing, CalendarDays } from "lucide-react"
 
 export default function StudentNotices() {
@@ -55,34 +57,40 @@ export default function StudentNotices() {
     return n.category === filterCategory
   })
 
-  if (loading) return <LoadingSpinner />
-
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-blue-900">Notice Board</h2>
-          <p className="text-muted-foreground mt-1">Official announcements and event updates for students.</p>
-        </div>
-        <div className="w-full md:w-48">
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger><SelectValue placeholder="Filter Categories" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Categories</SelectItem>
-              <SelectItem value="Holiday">Holiday</SelectItem>
-              <SelectItem value="Exam">Exam</SelectItem>
-              <SelectItem value="Event">Event</SelectItem>
-              <SelectItem value="General">General</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-300">
+      <PageHeader 
+        title="Notice Board" 
+        description="Official announcements, event updates, and holiday information."
+        action={
+          <div className="w-full sm:w-48">
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="bg-white border-slate-200 focus:ring-blue-500 shadow-sm"><SelectValue placeholder="Filter Categories" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Categories</SelectItem>
+                <SelectItem value="Holiday">Holiday</SelectItem>
+                <SelectItem value="Exam">Exam</SelectItem>
+                <SelectItem value="Event">Event</SelectItem>
+                <SelectItem value="General">General</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
       <div className="space-y-4">
-        {filteredNotices.length === 0 ? (
-          <div className="text-center p-12 border border-dashed rounded-lg text-muted-foreground">
-            No active notices for your class format found.
-          </div>
+        {loading ? (
+          <div className="py-16 flex justify-center"><LoadingSpinner /></div>
+        ) : filteredNotices.length === 0 ? (
+          <Card className="border-slate-200 border-dashed shadow-sm">
+            <CardContent className="p-0">
+              <EmptyState 
+                icon={Bell}
+                title="No notices available"
+                description={filterCategory === "ALL" ? "You're all caught up! There are no announcements for students right now." : `No notices found in the "${filterCategory}" category.`}
+              />
+            </CardContent>
+          </Card>
         ) : (
           filteredNotices.map((n) => {
             const isUnread = !readNotices.has(n.id)
@@ -91,34 +99,45 @@ export default function StudentNotices() {
               <Card 
                 key={n.id} 
                 onClick={() => markAsRead(n.id)}
-                className={`transition-all duration-200 cursor-pointer border-l-4 ${isUnread ? 'border-l-blue-500 shadow-md bg-white' : 'border-l-transparent bg-slate-50/50 opacity-80'}`}
+                className={`transition-all duration-300 cursor-pointer overflow-hidden group ${isUnread ? 'border-l-4 border-l-blue-500 shadow-md bg-white border-y-blue-100 border-r-blue-100 hover:shadow-lg' : 'border-l-4 border-l-transparent bg-slate-50 opacity-90 hover:opacity-100 border-y-slate-200 border-r-slate-200'}`}
               >
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-3 pt-5">
                   <div className="flex justify-between items-start gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1.5 flex-1">
                       <div className="flex items-center gap-2">
-                        {isUnread ? <BellRing className="w-4 h-4 text-blue-500 animate-pulse" /> : <Bell className="w-4 h-4 text-slate-400" />}
-                        <CardTitle className={`text-xl ${isUnread ? 'text-blue-900' : 'text-slate-700'}`}>{n.title}</CardTitle>
+                        {isUnread ? (
+                          <div className="bg-blue-100 p-1.5 rounded-full">
+                            <BellRing className="w-4 h-4 text-blue-600 animate-pulse" />
+                          </div>
+                        ) : (
+                          <div className="bg-slate-100 p-1.5 rounded-full">
+                            <Bell className="w-4 h-4 text-slate-400 group-hover:text-slate-500 transition-colors" />
+                          </div>
+                        )}
+                        <CardTitle className={`text-xl font-bold leading-tight ${isUnread ? 'text-blue-950' : 'text-slate-700 group-hover:text-slate-900 transition-colors'}`}>{n.title}</CardTitle>
                       </div>
-                      <CardDescription className="flex items-center gap-2 text-xs font-medium">
-                        <CalendarDays className="w-3 h-3" />
+                      <CardDescription className="flex items-center gap-2 text-xs font-medium ml-[34px]">
+                        <CalendarDays className="w-3.5 h-3.5" />
                         {format(new Date(n.scheduledAt || n.createdAt), "EEEE, do MMMM yyyy - p")}
                       </CardDescription>
                     </div>
-                    <Badge variant={n.category === 'Holiday' ? 'destructive' : n.category === 'Exam' ? 'default' : 'secondary'} className={isUnread && n.category === 'General' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : ''}>
+                    <Badge variant={n.category === 'Holiday' ? 'destructive' : n.category === 'Exam' ? 'default' : 'secondary'} className={`${isUnread && n.category === 'General' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : ''} shrink-0`}>
                       {n.category}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pb-5">
                   <div 
-                    className="prose prose-sm prose-blue max-w-none line-clamp-3 text-slate-600"
+                    className={`prose prose-sm max-w-none line-clamp-3 ml-[34px] ${isUnread ? 'text-slate-700' : 'text-slate-500 group-hover:text-slate-600 transition-colors'}`}
                     dangerouslySetInnerHTML={{ __html: n.body }}
                   />
                   {isUnread && (
-                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mt-4">
-                      Click to mark read
-                    </p>
+                    <div className="ml-[34px] mt-4 flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">
+                        Click anywhere on card to mark as read
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>

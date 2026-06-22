@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { Download, FileSpreadsheet } from "lucide-react"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { Download, FileSpreadsheet, FileText, CheckCircle2, AlertCircle } from "lucide-react"
 
 const EXAM_TYPES = ["UNIT_TEST", "HALF_YEARLY", "ANNUAL"]
 const EXAM_LABELS: Record<string, string> = {
@@ -31,12 +33,13 @@ function getGrade(percentage: number) {
 
 function getGradeColor(grade: string) {
   switch (grade) {
-    case "A+": case "A": return "bg-green-100 text-green-800"
-    case "B": return "bg-blue-100 text-blue-800"
-    case "C": return "bg-yellow-100 text-yellow-800"
-    case "D": return "bg-orange-100 text-orange-800"
-    case "F": return "bg-red-100 text-red-800"
-    default: return "bg-slate-100 text-slate-800"
+    case "A+": return "bg-emerald-100 text-emerald-800 border-emerald-200"
+    case "A": return "bg-green-100 text-green-800 border-green-200"
+    case "B": return "bg-blue-100 text-blue-800 border-blue-200"
+    case "C": return "bg-yellow-100 text-yellow-800 border-yellow-200"
+    case "D": return "bg-orange-100 text-orange-800 border-orange-200"
+    case "F": return "bg-rose-100 text-rose-800 border-rose-200"
+    default: return "bg-slate-100 text-slate-800 border-slate-200"
   }
 }
 
@@ -140,89 +143,127 @@ export default function StudentResults() {
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-blue-900">My Results</h2>
-          <p className="text-muted-foreground mt-1">View exam-wise academic performance and download report cards.</p>
-        </div>
-        {enrichedResults.length > 0 && (
-          <Button className="bg-blue-600 hover:bg-blue-700" onClick={downloadReportCard}>
-            <Download className="w-4 h-4 mr-2" />
-            Download Report Card
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-5xl mx-auto">
+      <PageHeader 
+        title="My Results" 
+        description="View your exam-wise academic performance and download official report cards."
+        action={
+          enrichedResults.length > 0 && (
+            <Button className="bg-blue-600 hover:bg-blue-700 shadow-md" onClick={downloadReportCard}>
+              <Download className="w-4 h-4 mr-2" /> Download Report Card
+            </Button>
+          )
+        }
+      />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-6 p-1 bg-blue-50 text-blue-800 border border-blue-100 rounded-lg">
           {EXAM_TYPES.map(et => (
-            <TabsTrigger key={et} value={et}>{EXAM_LABELS[et]}</TabsTrigger>
+            <TabsTrigger key={et} value={et} className="data-[state=active]:bg-white data-[state=active]:text-blue-900 data-[state=active]:shadow-sm rounded-md transition-all font-semibold">
+              {EXAM_LABELS[et]}
+            </TabsTrigger>
           ))}
         </TabsList>
 
         {EXAM_TYPES.map(et => (
-          <TabsContent key={et} value={et}>
-            <Card className="border-blue-100">
-              <CardHeader className="bg-blue-50/50">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-                  <CardTitle className="text-lg">{EXAM_LABELS[et]} — Subject-Wise Breakdown</CardTitle>
+          <TabsContent key={et} value={et} className="mt-0">
+            <Card className="border-blue-100 shadow-sm overflow-hidden">
+              <CardHeader className="bg-blue-50/50 border-b border-blue-50 py-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                      <FileSpreadsheet className="w-4 h-4" />
+                    </div>
+                    <CardTitle className="text-lg text-blue-950">{EXAM_LABELS[et]} — Breakdown</CardTitle>
+                  </div>
+                  
+                  {enrichedResults.length > 0 && (
+                    <div className="flex items-center gap-2 text-xs font-bold bg-white px-3 py-1.5 rounded-full border border-blue-100 shadow-sm text-blue-800 uppercase tracking-wider">
+                      Overall: {overallPercentage.toFixed(1)}% <span className="text-slate-300">|</span> {overallGrade}
+                    </div>
+                  )}
                 </div>
               </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
+              <CardContent className="p-0">
                 {loading ? (
-                  <div className="flex justify-center p-12"><LoadingSpinner /></div>
+                  <div className="flex justify-center p-16"><LoadingSpinner /></div>
                 ) : enrichedResults.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    No results published yet for this exam.
+                  <div className="py-16">
+                    <EmptyState 
+                      icon={FileText}
+                      title="No Results Found"
+                      description={`Your results for the ${EXAM_LABELS[et]} have not been published yet.`}
+                    />
                   </div>
                 ) : (
-                  <>
-                    <Table className="min-w-[600px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Subject</TableHead>
-                          <TableHead className="text-center">Obtained</TableHead>
-                          <TableHead className="text-center">Total</TableHead>
-                          <TableHead className="text-center">Percentage</TableHead>
-                          <TableHead className="text-center">Grade</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {enrichedResults.map((r) => (
-                          <TableRow key={r.id}>
-                            <TableCell className="font-medium">{r.subject}</TableCell>
-                            <TableCell className="text-center font-bold">{r.marksObtained}</TableCell>
-                            <TableCell className="text-center">{r.totalMarks}</TableCell>
-                            <TableCell className="text-center">{r.percentage.toFixed(1)}%</TableCell>
-                            <TableCell className="text-center">
-                              <Badge className={getGradeColor(r.grade)}>{r.grade}</Badge>
-                            </TableCell>
+                  <div className="flex flex-col">
+                    <div className="overflow-x-auto">
+                      <Table className="min-w-[600px]">
+                        <TableHeader className="bg-slate-50/80">
+                          <TableRow className="border-b border-slate-200">
+                            <TableHead className="font-semibold text-slate-700 w-[200px] pl-6">Subject</TableHead>
+                            <TableHead className="text-center font-semibold text-slate-700">Obtained</TableHead>
+                            <TableHead className="text-center font-semibold text-slate-700">Total Marks</TableHead>
+                            <TableHead className="text-center font-semibold text-slate-700">Percentage</TableHead>
+                            <TableHead className="text-center font-semibold text-slate-700 pr-6">Grade</TableHead>
                           </TableRow>
-                        ))}
-                        {/* Total row */}
-                        <TableRow className="bg-blue-50 font-bold border-t-2 border-blue-200">
-                          <TableCell className="font-bold text-blue-900">TOTAL</TableCell>
-                          <TableCell className="text-center font-bold text-blue-900">{totalObtained}</TableCell>
-                          <TableCell className="text-center font-bold text-blue-900">{totalMax}</TableCell>
-                          <TableCell className="text-center font-bold text-blue-900">{overallPercentage.toFixed(1)}%</TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={getGradeColor(overallGrade)}>{overallGrade}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-slate-100">
+                          {enrichedResults.map((r) => (
+                            <TableRow key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                              <TableCell className="font-semibold text-slate-900 pl-6">{r.subject}</TableCell>
+                              <TableCell className="text-center font-bold text-blue-700">{r.marksObtained}</TableCell>
+                              <TableCell className="text-center text-slate-600">{r.totalMarks}</TableCell>
+                              <TableCell className="text-center font-medium text-slate-700">{r.percentage.toFixed(1)}%</TableCell>
+                              <TableCell className="text-center pr-6">
+                                <span className={`inline-flex px-2.5 py-1 rounded text-xs font-bold border ${getGradeColor(r.grade)}`}>
+                                  {r.grade}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="bg-slate-50 border-t border-slate-200 p-6">
+                      <div className="flex flex-col md:flex-row items-center justify-between gap-6 max-w-3xl mx-auto">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 w-full">
+                          <div className="flex flex-col items-center">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Marks</span>
+                            <span className="text-xl font-bold text-slate-900">{totalMax}</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Obtained</span>
+                            <span className="text-xl font-black text-blue-700">{totalObtained}</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Percentage</span>
+                            <span className="text-xl font-bold text-slate-900">{overallPercentage.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Grade</span>
+                            <span className={`inline-flex px-3 py-0.5 rounded-full text-sm font-bold border ${getGradeColor(overallGrade)}`}>{overallGrade}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Pass / Fail banner */}
-                    <div className={`p-4 text-center font-bold text-lg ${isPassed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <div className={`p-4 sm:p-5 flex items-center justify-center gap-3 border-t font-bold text-base sm:text-lg tracking-wide shadow-inner ${isPassed ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-rose-50 text-rose-800 border-rose-100'}`}>
                       {isPassed ? (
-                        <span>✅ RESULT: PASS — Overall {overallPercentage.toFixed(1)}%</span>
+                        <>
+                          <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                          RESULT: PASSED
+                        </>
                       ) : (
-                        <span>❌ RESULT: FAIL — Overall {overallPercentage.toFixed(1)}% (Minimum 33% required)</span>
+                        <>
+                          <AlertCircle className="w-6 h-6 text-rose-600" />
+                          RESULT: FAILED <span className="text-sm font-medium ml-2 opacity-80">(Minimum 33% required)</span>
+                        </>
                       )}
                     </div>
-                  </>
+                  </div>
                 )}
               </CardContent>
             </Card>

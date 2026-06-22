@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { Save, AlertCircle } from "lucide-react"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { Save, AlertCircle, FileSpreadsheet, Users, Info } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { EmptyState } from "@/components/shared/EmptyState"
 
 export default function EnterResults() {
   const { toast } = useToast()
@@ -99,6 +101,11 @@ export default function EnterResults() {
          return
       }
 
+      if (m.isExisting && !m.editReason && o !== parseFloat(marksState[s.id].obtained)) {
+         // this validation is simplistic since we don't track original explicitly in this state,
+         // but if editReason is empty, backend or here we enforce it. We'll just enforce if m.isExisting.
+      }
+
       if (m.isExisting && !m.editReason) {
          toast({ title: "Validation Error", description: `Reason required for editing existing generic marks for Roll No ${s.rollNo}.`, variant: "destructive" })
          return
@@ -143,20 +150,26 @@ export default function EnterResults() {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold tracking-tight text-emerald-900">Enter Exam Results</h2>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader 
+        title="Enter Exam Results" 
+        description="Input and update academic scores for your assigned classes and subjects."
+      />
       
-      <Card className="border-emerald-100">
-        <CardHeader className="bg-emerald-50/50">
-          <CardTitle>Results Data Grid</CardTitle>
-          <CardDescription>Target isolated sections to submit batch academic scores.</CardDescription>
+      <Card className="border-emerald-100 shadow-sm">
+        <CardHeader className="bg-emerald-50/50 pb-4 border-b border-emerald-50">
+          <CardTitle className="text-emerald-900 flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+            Results Data Grid
+          </CardTitle>
+          <CardDescription>Select class, exam type, and subject to begin data entry.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="p-0 sm:p-6 sm:pt-6">
+          <div className="p-4 sm:p-0 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="space-y-2">
-              <Label>Class</Label>
+              <Label className="text-slate-600">Class</Label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectTrigger className="bg-white border-emerald-100 focus:ring-emerald-500"><SelectValue placeholder="Select class" /></SelectTrigger>
                 <SelectContent>
                   {classesData.map(c => (
                     <SelectItem key={c.className} value={c.className}>Class {c.className}</SelectItem>
@@ -165,9 +178,9 @@ export default function EnterResults() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Exam Type</Label>
+              <Label className="text-slate-600">Exam Type</Label>
               <Select value={examType} onValueChange={setExamType}>
-                <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
+                <SelectTrigger className="bg-white border-emerald-100 focus:ring-emerald-500"><SelectValue placeholder="Select exam" /></SelectTrigger>
                 <SelectContent>
                   {EXAM_TYPES.map(e => (
                     <SelectItem key={e} value={e}>{e.replace("_", " ")}</SelectItem>
@@ -176,9 +189,9 @@ export default function EnterResults() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Subject</Label>
-              <Select value={subject} onValueChange={setSubject}>
-                <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+              <Label className="text-slate-600">Subject</Label>
+              <Select value={subject} onValueChange={setSubject} disabled={!selectedClass}>
+                <SelectTrigger className="bg-white border-emerald-100 focus:ring-emerald-500"><SelectValue placeholder="Select subject" /></SelectTrigger>
                 <SelectContent>
                   {availableSubjects.map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -188,92 +201,112 @@ export default function EnterResults() {
             </div>
           </div>
 
-          {!selectedClass || !examType || !subject ? (
-            <div className="p-8 text-center text-muted-foreground border rounded-md">
-              Please select all filters to load the student grid.
-            </div>
-          ) : loading ? (
-            <div className="p-8 flex justify-center border rounded-md"><LoadingSpinner /></div>
-          ) : (
-            <div className="space-y-4">
-              <Alert className="bg-blue-50 text-blue-800 border-blue-200">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Changing existing scores requires submitting a brief Modification Reason which is piped immediately into Audit tracking.
-                </AlertDescription>
-              </Alert>
-
-              <div className="border rounded-md overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[120px]">Roll No</TableHead>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead className="w-[150px]">Obtained Marks</TableHead>
-                      <TableHead className="w-[150px]">Total Marks</TableHead>
-                      <TableHead>Edit Logs</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {students.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-6">No active students.</TableCell></TableRow>
-                    ) : (
-                      students.map(s => {
-                        const m = marksState[s.id]
-                        const isInvalid = m.obtained && (parseFloat(m.obtained) < 0 || parseFloat(m.obtained) > parseFloat(m.total))
-                        
-                        return (
-                          <TableRow key={s.id} className={m.isExisting ? "bg-emerald-50/30" : ""}>
-                            <TableCell className="font-medium">{s.rollNo}</TableCell>
-                            <TableCell>
-                              {s.user.name}
-                              {m.isExisting && <span className="ml-2 text-[10px] text-emerald-600 font-bold bg-emerald-100 px-1 rounded">STORED</span>}
-                            </TableCell>
-                            <TableCell>
-                              <Input 
-                                type="number" 
-                                value={m.obtained}
-                                className={isInvalid ? "border-red-500" : ""}
-                                onChange={e => handleUpdateMark(s.id, "obtained", e.target.value)}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input 
-                                type="number" 
-                                value={m.total} 
-                                onChange={e => handleUpdateMark(s.id, "total", e.target.value)}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {m.isExisting ? (
-                                <Input 
-                                  placeholder="Reason for change..." 
-                                  value={m.editReason} 
-                                  onChange={e => handleUpdateMark(s.id, "editReason", e.target.value)}
-                                  className={!m.editReason && m.obtained !== "" ? "border-orange-300" : ""}
-                                />
-                              ) : (
-                                <span className="text-xs text-muted-foreground italic">New Entry</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+          <div className="sm:border sm:rounded-md overflow-hidden">
+            {!selectedClass || !examType || !subject ? (
+              <div className="p-12">
+                <EmptyState 
+                  icon={FileSpreadsheet}
+                  title="Select filters to load grid"
+                  description="Choose a class, exam type, and subject from the dropdowns above to start entering marks."
+                />
               </div>
-
-              {students.length > 0 && (
-                <div className="flex justify-end pt-4">
-                  <Button onClick={handleSaveAll} disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Grid
-                  </Button>
+            ) : loading ? (
+              <div className="p-16 flex justify-center"><LoadingSpinner /></div>
+            ) : (
+              <div className="space-y-0">
+                <div className="p-4 sm:p-4 bg-amber-50 border-b border-amber-100 flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-amber-900">Modification Rules</h4>
+                    <p className="text-sm text-amber-800 mt-1">Changing existing scores requires submitting a brief Modification Reason which is immediately logged in the Audit system.</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                <div className="overflow-x-auto bg-white">
+                  <Table className="min-w-[800px]">
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="w-[100px]">Roll No</TableHead>
+                        <TableHead className="w-[200px]">Student Name</TableHead>
+                        <TableHead className="w-[150px]">Obtained Marks</TableHead>
+                        <TableHead className="w-[150px]">Total Marks</TableHead>
+                        <TableHead>Edit Logs / Reason</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {students.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12">
+                            <EmptyState 
+                              icon={Users}
+                              title="No active students"
+                              description={`There are no active students in Class ${selectedClass}.`}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        students.map(s => {
+                          const m = marksState[s.id]
+                          const isInvalid = m.obtained && (parseFloat(m.obtained) < 0 || parseFloat(m.obtained) > parseFloat(m.total))
+                          
+                          return (
+                            <TableRow key={s.id} className={`hover:bg-slate-50 transition-colors ${m.isExisting ? "bg-emerald-50/20" : ""}`}>
+                              <TableCell className="font-medium text-slate-600">{s.rollNo}</TableCell>
+                              <TableCell>
+                                <div className="font-semibold text-slate-900">{s.user.name}</div>
+                                {m.isExisting && <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded uppercase tracking-wider"><Save className="w-3 h-3" /> Stored</span>}
+                              </TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  value={m.obtained}
+                                  placeholder="0"
+                                  className={`h-9 bg-white focus-visible:ring-emerald-500 ${isInvalid ? "border-red-500 focus-visible:ring-red-500 bg-red-50" : "border-slate-200"}`}
+                                  onChange={e => handleUpdateMark(s.id, "obtained", e.target.value)}
+                                />
+                                {isInvalid && <p className="text-[10px] text-red-600 mt-1 absolute">Invalid marks</p>}
+                              </TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  value={m.total} 
+                                  className="h-9 bg-white border-slate-200 focus-visible:ring-emerald-500"
+                                  onChange={e => handleUpdateMark(s.id, "total", e.target.value)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {m.isExisting ? (
+                                  <Input 
+                                    placeholder="Required reason for change..." 
+                                    value={m.editReason || ""} 
+                                    onChange={e => handleUpdateMark(s.id, "editReason", e.target.value)}
+                                    className={`h-9 bg-white ${!m.editReason && m.obtained !== "" ? "border-amber-300 focus-visible:ring-amber-500" : "border-slate-200 focus-visible:ring-emerald-500"}`}
+                                  />
+                                ) : (
+                                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground italic bg-slate-50 px-2 py-1.5 rounded w-max">
+                                    <Info className="w-3.5 h-3.5" /> New Entry
+                                  </span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {students.length > 0 && (
+                  <div className="p-4 sm:p-6 bg-slate-50 border-t flex justify-end">
+                    <Button onClick={handleSaveAll} disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto shadow-md">
+                      <Save className="w-4 h-4 mr-2" />
+                      {submitting ? "Saving..." : "Save Data Grid"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

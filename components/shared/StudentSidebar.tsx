@@ -7,15 +7,18 @@ import { LayoutDashboard, Bell, CreditCard, CalendarCheck, FileSpreadsheet, LogO
 import { signOut, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getInitials, getAvatarColor } from "@/lib/formatters"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 export function StudentSidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [studentData, setStudentData] = useState<any>(null)
+  const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    // We fetch the dashboard data so we can populate the sidebar with Class/RollNo
     fetch('/api/student/dashboard')
       .then(res => res.json())
       .then(data => {
@@ -34,101 +37,87 @@ export function StudentSidebar() {
     { name: "My Profile", href: "/student/profile", icon: UserCircle },
   ]
 
-  const NavLinks = () => (
-    <nav className="flex flex-col gap-2 mt-6">
-      {links.map((link) => {
-        const Icon = link.icon
-        const isActive = pathname === link.href
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-blue-900",
-              isActive ? "bg-blue-100 text-blue-900 font-bold" : "text-blue-700 hover:bg-blue-50 font-medium"
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {link.name}
-          </Link>
-        )
-      })}
-    </nav>
-  )
+  const SidebarContent = () => (
+    <div className="w-full h-full flex flex-col bg-blue-50 text-blue-900">
+      <div className="p-6 border-b border-blue-200">
+        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <span>🏫</span> School ERP
+        </h2>
+        <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-200 text-blue-800 uppercase tracking-wider">
+          Student
+        </div>
+      </div>
 
-  const UserInfo = () => {
-    // Helper to generate color for initial avatar
-    const stringToColor = (str: string) => {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      const color = Math.floor(Math.abs(Math.sin(hash) * 16777215)).toString(16);
-      return "#" + "000000".substring(0, 6 - color.length) + color;
-    };
-    
-    return (
-      <div className="mt-auto border-t border-blue-200 p-4">
-        <Link href="/student/profile" className="flex items-center gap-3 text-sm text-blue-800 mb-4 hover:bg-blue-100 p-2 rounded-md transition-colors cursor-pointer">
-          {studentData?.photoUrl ? (
-            <img src={studentData.photoUrl} alt="Photo" className="w-8 h-8 rounded-full object-cover border border-blue-300 shrink-0" />
-          ) : (
-            <div 
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white border border-blue-300 shrink-0"
-              style={{ backgroundColor: session?.user?.name ? stringToColor(session.user.name) : "#cbd5e1" }}
+      <div className="p-4 border-b border-blue-200 flex items-center gap-3">
+        <Avatar className="h-10 w-10 border border-blue-300">
+          <AvatarImage src={studentData?.photoUrl || (session?.user as any)?.image || ""} />
+          <AvatarFallback className={cn("text-white text-sm font-medium", getAvatarColor(session?.user?.name || "S"))}>
+            {getInitials(session?.user?.name || "S")}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold truncate">
+            {session?.user?.name || "Student"}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">
+            {session?.user?.email}
+          </p>
+        </div>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3">
+        {links.map((link) => {
+          const Icon = link.icon
+          const isActive = pathname.startsWith(link.href)
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setIsOpen(false)}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 transition-all text-sm font-medium",
+                isActive 
+                  ? "bg-blue-100 text-blue-900 shadow-sm" 
+                  : "text-blue-700 hover:bg-blue-100/50"
+              )}
             >
-              {session?.user?.name?.charAt(0) || "S"}
-            </div>
-          )}
-          <div className="flex flex-col overflow-hidden">
-            <span className="font-bold truncate">{session?.user?.name || "Student"}</span>
-            {studentData ? (
-              <span className="text-xs text-blue-600 font-medium truncate">
-                Class {studentData.class}-{studentData.section}
-              </span>
-            ) : (
-              <span className="text-xs text-blue-600 truncate">{session?.user?.email}</span>
-            )}
-          </div>
-        </Link>
+              <Icon className="h-4 w-4 shrink-0" />
+              {link.name}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="p-4 border-t border-blue-200">
         <Button 
-          variant="outline" 
-          className="w-full justify-start text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-900" 
+          variant="ghost" 
+          className="w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive" 
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
           <LogOut className="mr-2 h-4 w-4" />
           Logout
         </Button>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <>
-      <Sheet>
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="md:hidden absolute top-4 left-4 z-50 text-blue-600 border-blue-200">
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle Sidebar</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0 bg-blue-50 border-r-blue-200 flex flex-col">
-          <div className="p-6 pb-0">
-            <h1 className="text-2xl font-bold text-blue-900">ERP <span className="text-blue-600 font-light">Student</span></h1>
-          </div>
-          <div className="flex-1 px-4 overflow-y-auto">
-            <NavLinks />
-          </div>
-          <UserInfo />
+        <SheetContent side="left" className="w-64 p-0 border-r-blue-200">
+          <VisuallyHidden><SheetTitle>Navigation Menu</SheetTitle></VisuallyHidden>
+          <SidebarContent />
         </SheetContent>
       </Sheet>
 
       <div className="hidden md:flex h-screen w-64 flex-col border-r border-blue-200 bg-blue-50 shrink-0 sticky top-0">
-        <div className="p-6 pb-0">
-          <h1 className="text-2xl font-bold text-blue-900">ERP <span className="text-blue-600 font-light">Student</span></h1>
-        </div>
-        <div className="flex-1 px-4 overflow-y-auto">
-          <NavLinks />
-        </div>
-        <UserInfo />
+        <SidebarContent />
       </div>
     </>
   )

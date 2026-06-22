@@ -64,9 +64,10 @@ export function SalarySetupTab() {
         <CardTitle>Salary Configuration</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-lg overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b">
+        <div className="rounded-md border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b">
               <tr>
                 <th className="text-left p-3 font-semibold">Teacher</th>
                 <th className="text-left p-3 font-semibold">Employee ID</th>
@@ -106,14 +107,17 @@ export function SalarySetupTab() {
                     )}
                   </td>
                   <td className="p-3">
-                    <Button size="sm" variant="outline" onClick={() => openConfigModal(t)}>
-                      {t.salaryConfig ? "Edit" : "Configure"}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td className="p-3">
+                      <Button size="sm" variant="outline" onClick={() => openConfigModal(t)}>
+                        {t.salaryConfig ? "Edit" : "Configure"}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {selectedTeacher && (
@@ -194,7 +198,7 @@ function ConfigureModal({ open, onClose, teacher, onSaved }: {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle>Configure Salary — {teacher.name}</DialogTitle>
         </DialogHeader>

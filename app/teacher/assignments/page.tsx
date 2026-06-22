@@ -10,11 +10,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { BookOpen, Calendar, Clock, FileText, Paperclip, Plus, Search, Trash2, Users } from "lucide-react"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { DataBadge } from "@/components/shared/DataBadge"
+import { BookOpen, Calendar, Clock, FileText, Paperclip, Plus, Trash2, Users, Download, MessageSquare, CheckCircle2, AlertCircle, Save } from "lucide-react"
 
 export default function TeacherAssignments() {
   const { data: session } = useSession()
@@ -175,48 +178,59 @@ export default function TeacherAssignments() {
     : classesData.find(c => c.className === filterClass)?.subjects || []
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-emerald-900">Assignments</h2>
-          <p className="text-muted-foreground">Manage your assignments and review student submissions.</p>
-        </div>
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-300 max-w-7xl mx-auto">
+      <PageHeader 
+        title="Assignments" 
+        description="Manage your class assignments, track due dates, and review student submissions."
+        action={
+          <Button onClick={() => setIsAddOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 shadow-md">
+            <Plus className="w-4 h-4 mr-2" /> Create Assignment
+          </Button>
+        }
+      />
 
-      <Tabs defaultValue="my_assignments">
-        <TabsList className="bg-emerald-50 text-emerald-800">
-          <TabsTrigger value="my_assignments">My Assignments</TabsTrigger>
-          <TabsTrigger value="submissions">Student Submissions</TabsTrigger>
+      <Tabs defaultValue="my_assignments" className="w-full">
+        <TabsList className="grid w-full sm:w-auto grid-cols-2 mb-6 p-1 bg-emerald-50 text-emerald-800 border border-emerald-100 rounded-lg">
+          <TabsTrigger value="my_assignments" className="data-[state=active]:bg-white data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm rounded-md transition-all">My Assignments</TabsTrigger>
+          <TabsTrigger value="submissions" className="data-[state=active]:bg-white data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm rounded-md transition-all">Student Submissions</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="my_assignments" className="space-y-4 mt-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
-            <div className="flex gap-4">
-              <Select value={filterClass} onValueChange={setFilterClass}>
-                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Class" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Classes</SelectItem>
-                  {classesData.map(c => <SelectItem key={c.className} value={c.className}>Class {c.className}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filterSubject} onValueChange={setFilterSubject} disabled={filterClass === "ALL"}>
-                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Subject" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Subjects</SelectItem>
-                  {availableSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
+        <TabsContent value="my_assignments" className="mt-0 space-y-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4 w-full">
+              <div className="space-y-1.5 w-full sm:w-auto">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Filter Class</Label>
+                <Select value={filterClass} onValueChange={setFilterClass}>
+                  <SelectTrigger className="w-full sm:w-[180px] bg-slate-50 border-slate-200"><SelectValue placeholder="All Classes" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Classes</SelectItem>
+                    {classesData.map(c => <SelectItem key={c.className} value={c.className}>Class {c.className}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 w-full sm:w-auto">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Filter Subject</Label>
+                <Select value={filterSubject} onValueChange={setFilterSubject} disabled={filterClass === "ALL"}>
+                  <SelectTrigger className="w-full sm:w-[180px] bg-slate-50 border-slate-200 disabled:opacity-50"><SelectValue placeholder="All Subjects" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Subjects</SelectItem>
+                    {availableSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Button onClick={() => setIsAddOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="w-4 h-4 mr-2" /> Add Assignment
-            </Button>
           </div>
 
           {loading ? (
-            <div className="py-12 flex justify-center"><LoadingSpinner /></div>
+            <div className="py-20 flex justify-center"><LoadingSpinner /></div>
           ) : filteredAssignments.length === 0 ? (
-            <div className="text-center py-12 bg-white border rounded-lg text-muted-foreground">
-              No assignments found matching your filters.
+            <div className="bg-white border border-slate-100 rounded-xl py-16 shadow-sm">
+              <EmptyState 
+                icon={BookOpen}
+                title="No assignments found"
+                description={filterClass === "ALL" ? "You haven't created any assignments yet." : "No assignments match your current filters."}
+                action={{ label: "Create Assignment", onClick: () => setIsAddOpen(true) }}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -224,43 +238,52 @@ export default function TeacherAssignments() {
                 const pastDue = isPast(new Date(a.dueDate))
                 const dueToday = isToday(new Date(a.dueDate))
                 return (
-                  <Card key={a.id} className="hover:shadow-md transition-shadow border-emerald-100 overflow-hidden flex flex-col">
-                    <div className="h-2 w-full bg-emerald-500" />
+                  <Card key={a.id} className="hover:shadow-md transition-all duration-200 border-slate-200 overflow-hidden flex flex-col group hover:border-emerald-200 bg-white">
+                    <div className={`h-1.5 w-full ${pastDue ? 'bg-slate-300' : dueToday ? 'bg-amber-400' : 'bg-emerald-500'}`} />
                     <CardContent className="p-5 flex-1 flex flex-col">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex gap-2">
-                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">{a.subject}</span>
-                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-800">Class {a.className}</span>
+                      <div className="flex justify-between items-start mb-3 gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 tracking-wide">{a.subject}</span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 tracking-wide">Class {a.className}</span>
                         </div>
+                        {pastDue && <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold tracking-wider uppercase border border-slate-200 shrink-0">Closed</span>}
+                        {dueToday && !pastDue && <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold tracking-wider uppercase border border-amber-200 shrink-0">Due Today</span>}
                       </div>
-                      <h3 className="font-bold text-lg leading-tight mb-2 line-clamp-2">{a.title}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{a.description}</p>
                       
-                      <div className="mt-auto space-y-3">
+                      <h3 className="font-bold text-lg leading-tight mb-2 text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2">{a.title}</h3>
+                      <p className="text-sm text-slate-600 line-clamp-2 mb-5 leading-relaxed">{a.description}</p>
+                      
+                      <div className="mt-auto space-y-4">
                         {a.fileName && (
-                          <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                            <Paperclip className="w-4 h-4" />
-                            <span className="truncate">{a.fileName}</span>
+                          <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100/50 group/file hover:bg-blue-50 transition-colors">
+                            <Paperclip className="w-4 h-4 shrink-0 text-blue-500" />
+                            <span className="truncate font-medium">{a.fileName}</span>
                           </div>
                         )}
                         
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="w-4 h-4 text-slate-400" />
-                          <span className={pastDue ? "text-red-600 font-medium" : dueToday ? "text-orange-600 font-medium" : "text-slate-600"}>
-                            Due: {format(new Date(a.dueDate), 'dd MMM yyyy, p')}
-                            {pastDue && <span className="ml-2 px-1.5 py-0.5 rounded bg-red-100 text-red-800 text-[10px] font-bold tracking-wider uppercase">Closed</span>}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Users className="w-4 h-4 text-slate-400" />
-                          <span>Submissions: <strong className="text-emerald-700">{a._count.submissions}</strong></span>
+                        <div className="flex flex-col gap-2 pt-1">
+                          <div className="flex items-center gap-2.5 text-sm">
+                            <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
+                              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                            </div>
+                            <span className={pastDue ? "text-slate-500 line-through decoration-slate-300" : dueToday ? "text-amber-700 font-medium" : "text-slate-700 font-medium"}>
+                              Due {format(new Date(a.dueDate), 'dd MMM yyyy, p')}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                            <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                              <Users className="w-3.5 h-3.5 text-emerald-600" />
+                            </div>
+                            <span><strong className="text-emerald-700">{a._count.submissions}</strong> Student Submissions</span>
+                          </div>
                         </div>
                         
-                        <div className="flex gap-2 pt-2 border-t mt-4">
-                          <Button variant="outline" size="sm" className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50" onClick={() => openSubmissions(a)}>
-                            View Submissions
+                        <div className="flex gap-3 pt-4 border-t border-slate-100 mt-2">
+                          <Button variant="outline" className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" onClick={() => openSubmissions(a)}>
+                            Review Work
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(a.id)}>
+                          <Button variant="outline" size="icon" className="text-rose-500 border-rose-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 shrink-0" onClick={() => handleDelete(a.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -273,45 +296,55 @@ export default function TeacherAssignments() {
           )}
         </TabsContent>
 
-        <TabsContent value="submissions" className="mt-6">
-          <Card>
+        <TabsContent value="submissions" className="mt-0">
+          <Card className="border-slate-200 shadow-sm overflow-hidden">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 border-b text-slate-600">
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider font-semibold">
                     <tr>
-                      <th className="p-4 font-medium">Student</th>
-                      <th className="p-4 font-medium">Assignment</th>
-                      <th className="p-4 font-medium">Class/Subject</th>
-                      <th className="p-4 font-medium">Submitted On</th>
-                      <th className="p-4 font-medium">Status</th>
+                      <th className="px-6 py-4">Student</th>
+                      <th className="px-6 py-4">Assignment Info</th>
+                      <th className="px-6 py-4">Submitted On</th>
+                      <th className="px-6 py-4">Status</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-100">
                     {allSubmissions.filter(s => s.status !== "PENDING_FAKE").map(sub => (
-                      <tr key={sub.id} className="border-b hover:bg-slate-50/50 cursor-pointer" onClick={() => openSubmissions(sub.assignment)}>
-                        <td className="p-4">
-                          <p className="font-semibold">{sub.student.user.name}</p>
-                          <p className="text-xs text-muted-foreground">Roll: {sub.student.rollNo}</p>
+                      <tr key={sub.id} className="hover:bg-slate-50/60 cursor-pointer transition-colors" onClick={() => openSubmissions(sub.assignment)}>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-900">{sub.student.user.name}</span>
+                            <span className="text-xs text-slate-500 mt-0.5">Roll {sub.student.rollNo}</span>
+                          </div>
                         </td>
-                        <td className="p-4 font-medium max-w-[200px] truncate">{sub.assignment.title}</td>
-                        <td className="p-4">
-                          <span className="block text-xs font-bold text-slate-500">Class {sub.assignment.className}</span>
-                          <span className="block text-xs">{sub.assignment.subject}</span>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col max-w-[250px]">
+                            <span className="font-medium text-slate-900 truncate" title={sub.assignment.title}>{sub.assignment.title}</span>
+                            <span className="text-xs text-slate-500 mt-0.5">Class {sub.assignment.className} • {sub.assignment.subject}</span>
+                          </div>
                         </td>
-                        <td className="p-4 text-slate-600">{format(new Date(sub.submittedAt), 'PPp')}</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${
-                            sub.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
-                            sub.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {sub.status}
-                          </span>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {format(new Date(sub.submittedAt), 'PPp')}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <DataBadge status={sub.status} />
                         </td>
                       </tr>
                     ))}
                     {allSubmissions.length === 0 && (
-                      <tr><td colSpan={5} className="text-center p-8 text-muted-foreground">No submissions found.</td></tr>
+                      <tr>
+                        <td colSpan={4} className="text-center p-12">
+                          <EmptyState 
+                            icon={CheckCircle2}
+                            title="No submissions yet"
+                            description="Students have not submitted any assignments yet."
+                          />
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -323,26 +356,26 @@ export default function TeacherAssignments() {
 
       {/* ADD ASSIGNMENT MODAL */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Post New Assignment</DialogTitle>
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-xl sm:rounded-xl">
+          <DialogHeader className="pb-4 border-b border-slate-100">
+            <DialogTitle className="text-xl text-emerald-900">Post New Assignment</DialogTitle>
             <DialogDescription>Create an assignment for a specific class and subject.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-5 py-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <Label>Class</Label>
+                <Label className="text-slate-700">Class <span className="text-rose-500">*</span></Label>
                 <Select value={addForm.className} onValueChange={v => setAddForm({...addForm, className: v, subject: ""})}>
-                  <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                  <SelectTrigger className="border-slate-200 focus:ring-emerald-500"><SelectValue placeholder="Select class" /></SelectTrigger>
                   <SelectContent>
                     {classesData.map(c => <SelectItem key={c.className} value={c.className}>Class {c.className}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Subject</Label>
+                <Label className="text-slate-700">Subject <span className="text-rose-500">*</span></Label>
                 <Select value={addForm.subject} onValueChange={v => setAddForm({...addForm, subject: v})} disabled={!addForm.className}>
-                  <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectTrigger className="border-slate-200 focus:ring-emerald-500"><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
                     {(classesData.find(c => c.className === addForm.className)?.subjects || []).map(s => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -352,28 +385,63 @@ export default function TeacherAssignments() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Title</Label>
-              <Input value={addForm.title} onChange={e => setAddForm({...addForm, title: e.target.value})} maxLength={200} />
-              <div className="text-xs text-right text-muted-foreground">{addForm.title.length}/200</div>
+              <div className="flex justify-between items-center">
+                <Label className="text-slate-700">Title <span className="text-rose-500">*</span></Label>
+                <span className="text-xs text-slate-400 font-medium">{addForm.title.length}/200</span>
+              </div>
+              <Input 
+                value={addForm.title} 
+                onChange={e => setAddForm({...addForm, title: e.target.value})} 
+                maxLength={200} 
+                className="border-slate-200 focus-visible:ring-emerald-500 font-medium"
+                placeholder="e.g. Chapter 3: Geometry Exercise"
+              />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea value={addForm.description} onChange={e => setAddForm({...addForm, description: e.target.value})} className="h-24" maxLength={1000} />
-              <div className="text-xs text-right text-muted-foreground">{addForm.description.length}/1000</div>
+              <div className="flex justify-between items-center">
+                <Label className="text-slate-700">Description <span className="text-rose-500">*</span></Label>
+                <span className="text-xs text-slate-400 font-medium">{addForm.description.length}/1000</span>
+              </div>
+              <Textarea 
+                value={addForm.description} 
+                onChange={e => setAddForm({...addForm, description: e.target.value})} 
+                className="min-h-[120px] resize-none border-slate-200 focus-visible:ring-emerald-500 leading-relaxed" 
+                maxLength={1000} 
+                placeholder="Provide detailed instructions for the assignment..."
+              />
             </div>
             <div className="space-y-2">
-              <Label>Due Date & Time</Label>
-              <Input type="datetime-local" value={addForm.dueDate} onChange={e => setAddForm({...addForm, dueDate: e.target.value})} />
+              <Label className="text-slate-700">Due Date & Time <span className="text-rose-500">*</span></Label>
+              <Input 
+                type="datetime-local" 
+                value={addForm.dueDate} 
+                onChange={e => setAddForm({...addForm, dueDate: e.target.value})}
+                className="border-slate-200 focus-visible:ring-emerald-500" 
+              />
             </div>
-            <div className="space-y-2">
-              <Label>Attachment (Optional, max 10MB)</Label>
-              <Input type="file" onChange={e => setAddFile(e.target.files?.[0] || null)} />
+            <div className="space-y-2 p-4 bg-slate-50 border border-slate-100 rounded-lg border-dashed">
+              <Label className="text-slate-700 flex items-center gap-2 mb-2">
+                <Paperclip className="w-4 h-4 text-slate-400" /> Reference File (Optional)
+              </Label>
+              <Input 
+                type="file" 
+                onChange={e => setAddFile(e.target.files?.[0] || null)}
+                className="border-slate-200 file:bg-slate-100 file:text-slate-700 file:border-0 file:mr-4 file:px-4 file:py-1 file:rounded-full file:font-medium text-sm text-slate-600 focus-visible:ring-emerald-500 cursor-pointer"
+              />
+              <p className="text-xs text-slate-500 mt-2">Maximum file size: 10MB (PDF, JPG, PNG, DOCX)</p>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-            <Button onClick={handlePostAssignment} disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700">
-              {submitting ? "Posting..." : "Post Assignment"}
+          <DialogFooter className="border-t border-slate-100 pt-4 gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsAddOpen(false)} className="w-full sm:w-auto border-slate-200 hover:bg-slate-50">Cancel</Button>
+            <Button onClick={handlePostAssignment} disabled={submitting} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 shadow-sm">
+              {submitting ? (
+                <>
+                  <LoadingSpinner />
+                  <span className="ml-2">Posting...</span>
+                </>
+              ) : (
+                "Post Assignment"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -381,87 +449,114 @@ export default function TeacherAssignments() {
 
       {/* SUBMISSIONS DRAWER */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto sm:w-[600px]">
-          <SheetHeader className="mb-6 border-b pb-4">
-            <SheetTitle>Submissions: {activeAssignment?.title}</SheetTitle>
-            <p className="text-sm text-muted-foreground">Class {activeAssignment?.className} • {activeAssignment?.subject}</p>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto sm:w-[500px] border-l-0 shadow-2xl p-0 flex flex-col">
+          <SheetHeader className="p-6 bg-slate-50 border-b border-slate-200">
+            <div className="flex flex-wrap gap-2 mb-3">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 tracking-wide uppercase">{activeAssignment?.subject}</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800 border border-slate-300 tracking-wide uppercase">Class {activeAssignment?.className}</span>
+            </div>
+            <SheetTitle className="text-xl leading-tight text-slate-900">{activeAssignment?.title}</SheetTitle>
+            <SheetDescription className="text-sm mt-1">Reviewing submissions for this assignment.</SheetDescription>
           </SheetHeader>
 
           {drawerLoading ? (
-             <div className="flex justify-center p-12"><LoadingSpinner /></div>
+            <div className="flex justify-center flex-1 items-center p-12"><LoadingSpinner /></div>
           ) : (
-             <div className="space-y-6">
-               <div className="flex gap-2 p-1 bg-slate-100 rounded-md">
-                 {["ALL", "SUBMITTED", "PENDING", "COMPLETED"].map(s => (
-                   <button 
-                     key={s} 
-                     onClick={() => setStatusFilter(s)}
-                     className={`flex-1 py-1.5 text-xs font-medium rounded ${statusFilter === s ? 'bg-white shadow' : 'text-slate-500 hover:text-slate-900'}`}
-                   >
-                     {s}
-                   </button>
-                 ))}
-               </div>
+            <div className="flex flex-col flex-1 bg-slate-50/50">
+              <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 p-4">
+                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                  {[
+                    { id: "ALL", label: "All" },
+                    { id: "SUBMITTED", label: "Pending Review" },
+                    { id: "COMPLETED", label: "Graded" },
+                    { id: "PENDING", label: "Needs Revise" }
+                  ].map(s => (
+                    <button 
+                      key={s.id} 
+                      onClick={() => setStatusFilter(s.id)}
+                      className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-md transition-all ${statusFilter === s.id ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-               <div className="space-y-4">
-                 {submissions.filter(s => statusFilter === "ALL" || s.status === statusFilter).map(sub => (
-                   <div key={sub.id} className="p-4 border rounded-lg bg-slate-50 shadow-sm relative">
-                     <div className="flex justify-between items-start mb-3">
-                       <div>
-                         <h4 className="font-bold flex items-center gap-2">
-                           <div className={`w-2 h-2 rounded-full ${sub.status === 'COMPLETED' ? 'bg-green-500' : sub.status === 'SUBMITTED' ? 'bg-blue-500' : 'bg-orange-500'}`} />
-                           {sub.student.user.name} <span className="text-xs text-muted-foreground font-normal">(Roll {sub.student.rollNo})</span>
-                         </h4>
-                         <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                           <Clock className="w-3 h-3" /> Submitted: {format(new Date(sub.submittedAt), 'PPp')}
-                         </p>
-                       </div>
-                       <a href={sub.fileUrl} target="_blank" rel="noreferrer">
-                         <Button size="sm" variant="outline" className="h-8 border-blue-200 text-blue-700 hover:bg-blue-50">
-                           <FileText className="w-4 h-4 mr-1.5" /> Download
-                         </Button>
-                       </a>
-                     </div>
-                     
-                     <div className="bg-white p-3 rounded border border-slate-200 grid gap-3 mt-3">
-                       <div className="grid grid-cols-2 gap-3">
-                         <div className="space-y-1">
-                           <Label className="text-xs text-slate-500">Status Update</Label>
-                           <Select value={sub.status} onValueChange={(v) => handleReviewSubmission(sub.id, v)}>
-                             <SelectTrigger className="h-8 text-xs">
-                               <SelectValue />
-                             </SelectTrigger>
-                             <SelectContent>
-                               <SelectItem value="SUBMITTED">Submitted</SelectItem>
-                               <SelectItem value="PENDING">Needs Revision</SelectItem>
-                               <SelectItem value="COMPLETED">Accepted</SelectItem>
-                             </SelectContent>
-                           </Select>
-                         </div>
-                         <div className="space-y-1">
-                           <Label className="text-xs text-slate-500">Add Feedback Note</Label>
-                           <div className="flex gap-2">
-                             <Input 
-                               placeholder="Good work..." 
-                               className="h-8 text-xs" 
-                               value={reviewNotes[sub.id] || ""} 
-                               onChange={e => setReviewNotes({...reviewNotes, [sub.id]: e.target.value})} 
-                             />
-                             <Button size="sm" className="h-8 bg-slate-800" onClick={() => handleReviewSubmission(sub.id, sub.status)}>Save</Button>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
-                   </div>
-                 ))}
-                 
-                 {submissions.filter(s => statusFilter === "ALL" || s.status === statusFilter).length === 0 && (
-                   <div className="text-center p-8 text-muted-foreground border border-dashed rounded-lg">
-                     No submissions in this category.
-                   </div>
-                 )}
-               </div>
-             </div>
+              <div className="p-4 space-y-4 flex-1">
+                {submissions.filter(s => statusFilter === "ALL" || s.status === statusFilter).map(sub => (
+                  <Card key={sub.id} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <CardHeader className="p-4 pb-3 border-b border-slate-100 bg-white flex flex-row items-start justify-between gap-4 space-y-0">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-bold text-slate-900 text-base leading-none">{sub.student.user.name}</h4>
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">R-{sub.student.rollNo}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-2">
+                          <Clock className="w-3 h-3 text-slate-400" /> 
+                          {format(new Date(sub.submittedAt), 'dd MMM, HH:mm')}
+                        </div>
+                      </div>
+                      <a href={sub.fileUrl} target="_blank" rel="noreferrer" className="shrink-0">
+                        <Button size="sm" variant="outline" className="h-8 border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-800">
+                          <Download className="w-3.5 h-3.5 mr-1.5" /> File
+                        </Button>
+                      </a>
+                    </CardHeader>
+                    
+                    <CardContent className="p-4 bg-slate-50/50 space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Evaluation Status</Label>
+                          <Select value={sub.status} onValueChange={(v) => handleReviewSubmission(sub.id, v)}>
+                            <SelectTrigger className={`h-9 font-medium text-sm bg-white focus:ring-emerald-500 ${
+                              sub.status === 'COMPLETED' ? 'border-emerald-200 text-emerald-800 focus:border-emerald-500' :
+                              sub.status === 'PENDING' ? 'border-amber-200 text-amber-800 focus:border-amber-500' :
+                              'border-blue-200 text-blue-800 focus:border-blue-500'
+                            }`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="SUBMITTED">Needs Review (Unread)</SelectItem>
+                              <SelectItem value="COMPLETED">Accepted (Graded)</SelectItem>
+                              <SelectItem value="PENDING">Return for Revision</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" /> Teacher Feedback
+                          </Label>
+                          <div className="flex gap-2">
+                            <Textarea 
+                              placeholder="Add comments, grades, or revision notes..." 
+                              className="min-h-[80px] text-sm resize-none border-slate-200 focus-visible:ring-emerald-500 bg-white placeholder:text-slate-400 leading-relaxed" 
+                              value={reviewNotes[sub.id] || ""} 
+                              onChange={e => setReviewNotes({...reviewNotes, [sub.id]: e.target.value})} 
+                            />
+                          </div>
+                          <div className="flex justify-end pt-1">
+                            <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 shadow-sm" onClick={() => handleReviewSubmission(sub.id, sub.status)}>
+                              <Save className="w-3.5 h-3.5 mr-1.5" /> Save Feedback
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {submissions.filter(s => statusFilter === "ALL" || s.status === statusFilter).length === 0 && (
+                  <div className="text-center py-16 px-6 bg-white border border-dashed border-slate-200 rounded-xl">
+                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <AlertCircle className="w-6 h-6 text-slate-400" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-900">No submissions found</h4>
+                    <p className="text-xs text-slate-500 mt-1">There are no submissions matching the selected status filter.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </SheetContent>
       </Sheet>

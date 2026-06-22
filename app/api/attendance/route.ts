@@ -18,11 +18,10 @@ export async function GET(request: Request) {
   if (session.user.role === "TEACHER") {
     const teacher = await prisma.teacher.findUnique({
       where: { userId: session.user.id },
-      include: { assignedClasses: true }
+      include: { classTeacher: true }
     })
-    const isAssigned = teacher?.assignedClasses.some(ac => ac.className === className)
-    if (!isAssigned) {
-      return NextResponse.json({ error: "Unauthorized access to this class" }, { status: 403 })
+    if (teacher?.classTeacher?.className !== className) {
+      return NextResponse.json({ error: "Only the class teacher can view attendance for this class" }, { status: 403 })
     }
   }
 
@@ -67,7 +66,7 @@ export async function POST(request: Request) {
     if (session.user.role === "TEACHER") {
       const teacher = await prisma.teacher.findUnique({
         where: { userId: session.user.id },
-        include: { assignedClasses: true }
+        include: { classTeacher: true }
       })
       
       // Verify first student's class to ensure teacher is assigned to it
@@ -76,9 +75,8 @@ export async function POST(request: Request) {
         select: { class: true }
       })
       
-      const isAssigned = teacher?.assignedClasses.some(ac => ac.className === sampleStudent?.class)
-      if (!sampleStudent || !isAssigned) {
-        return NextResponse.json({ error: "Unauthorized to mark attendance for this class" }, { status: 403 })
+      if (!sampleStudent || teacher?.classTeacher?.className !== sampleStudent.class) {
+        return NextResponse.json({ error: "Only the class teacher can mark attendance for this class." }, { status: 403 })
       }
     }
 

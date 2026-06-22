@@ -132,7 +132,14 @@ export async function POST(request: Request) {
       { teacher, credentials: { email: data.email, tempPassword: data.phone } },
       { status: 201 }
     );
-  } catch (error) {
-    return handlePrismaError(error, "Failed to create teacher");
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      const field = error?.meta?.target?.[0] || "field"
+      return NextResponse.json(
+        { error: `A teacher with this ${field} already exists.` },
+        { status: 409 }
+      )
+    }
+    return handlePrismaError(error, "Failed to create teacher")
   }
 }

@@ -157,9 +157,10 @@ export function PaymentHistoryTab() {
           {loading && <LoadingSpinner />}
 
           {!loading && filtered.length > 0 && (
-            <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b">
+            <div className="rounded-md border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="text-left p-3 font-semibold">Teacher</th>
                     <th className="text-left p-3 font-semibold">Month</th>
@@ -189,6 +190,7 @@ export function PaymentHistoryTab() {
                   ))}
                 </tbody>
               </table>
+            </div>
             </div>
           )}
 

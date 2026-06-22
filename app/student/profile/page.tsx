@@ -2,34 +2,23 @@
 
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { Camera, Eye, EyeOff } from "lucide-react"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { Camera, MapPin, Phone, Mail, User, GraduationCap, CalendarDays, KeyRound } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PasswordChangeForm } from "@/components/shared/PasswordChangeForm"
 
 export default function StudentProfile() {
   const [student, setStudent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [changingPassword, setChangingPassword] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const { toast } = useToast()
-
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: ""
-  })
-
-  const [showPasswords, setShowPasswords] = useState({
-    current: false,
-    new: false,
-    confirm: false
-  })
 
   const fetchProfile = async () => {
     try {
@@ -96,49 +85,6 @@ export default function StudentProfile() {
     }
   }
 
-  const handlePasswordChange = async () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" })
-      return
-    }
-
-    setChangingPassword(true)
-    try {
-      const res = await fetch("/api/students/me/password", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(passwordForm)
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-
-      toast({ title: "Success", description: "Password changed successfully" })
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" })
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" })
-    } finally {
-      setChangingPassword(false)
-    }
-  }
-
-  // Password Strength Calculation
-  const getPasswordStrength = () => {
-    const { newPassword } = passwordForm
-    const length = newPassword.length >= 8
-    const upper = /[A-Z]/.test(newPassword)
-    const number = /[0-9]/.test(newPassword)
-    const special = /[^A-Za-z0-9]/.test(newPassword)
-
-    const criteriaMet = [length, upper, number, special].filter(Boolean).length
-
-    if (newPassword.length === 0) return { label: "None", color: "bg-slate-200", checks: { length, upper, number, special } }
-    if (criteriaMet <= 1) return { label: "Weak", color: "bg-red-500", checks: { length, upper, number, special } }
-    if (criteriaMet <= 3) return { label: "Medium", color: "bg-orange-500", checks: { length, upper, number, special } }
-    return { label: "Strong", color: "bg-green-500", checks: { length, upper, number, special } }
-  }
-
-  const strength = getPasswordStrength()
-
   // Generate color based on name string
   const stringToColor = (str: string) => {
     let hash = 0
@@ -149,28 +95,32 @@ export default function StudentProfile() {
     return "#" + "000000".substring(0, 6 - color.length) + color
   }
 
-  if (loading) return <LoadingSpinner />
-  if (!student) return <div>Failed to load profile.</div>
+  if (loading) return <div className="py-20"><LoadingSpinner /></div>
+  if (!student) return <div className="p-6 text-center text-red-500 bg-red-50 rounded-lg">Failed to load profile. Please contact administrator.</div>
 
   const avatarColor = stringToColor(student.user.name)
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <h2 className="text-3xl font-bold tracking-tight">My Profile</h2>
+    <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
+      <PageHeader 
+        title="My Profile" 
+        description="View your academic details and manage account settings."
+      />
 
       <div className="grid md:grid-cols-3 gap-6">
         
         {/* LEFT CARD - Profile Display */}
-        <Card className="col-span-1 h-fit">
-          <CardContent className="pt-6 flex flex-col items-center text-center">
-            <div className="relative mb-4 flex flex-col items-center">
+        <Card className="col-span-1 border-blue-100 shadow-sm h-fit overflow-hidden">
+          <div className="h-24 bg-gradient-to-br from-blue-500 to-indigo-600 w-full" />
+          <CardContent className="pt-0 flex flex-col items-center text-center px-6 pb-6">
+            <div className="relative -mt-12 mb-6 flex flex-col items-center group">
               {photoPreview ? (
-                <img src={photoPreview} alt="Preview" className="w-32 h-32 rounded-full object-cover border-4 border-blue-100" />
+                <img src={photoPreview} alt="Preview" className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md bg-white" />
               ) : student.photoUrl ? (
-                <img src={student.photoUrl} alt="Profile" className="w-32 h-32 rounded-full object-cover border-4 border-slate-100" />
+                <img src={student.photoUrl} alt="Profile" className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md bg-white transition-transform duration-300 group-hover:scale-105" />
               ) : (
                 <div 
-                  className="w-32 h-32 rounded-full flex items-center justify-center text-4xl font-bold text-white border-4 border-slate-100"
+                  className="w-32 h-32 rounded-full flex items-center justify-center text-5xl font-bold text-white border-4 border-white shadow-md transition-transform duration-300 group-hover:scale-105"
                   style={{ backgroundColor: avatarColor }}
                 >
                   {student.user.name.charAt(0)}
@@ -178,7 +128,7 @@ export default function StudentProfile() {
               )}
               
               {!photoFile && (
-                <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-sm">
+                <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-md ring-4 ring-white">
                   <Camera className="w-4 h-4" />
                   <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileSelect} disabled={uploading} />
                 </label>
@@ -186,40 +136,58 @@ export default function StudentProfile() {
             </div>
 
             {photoFile && (
-              <div className="flex flex-col items-center gap-2 mb-4 w-full">
-                <span className="text-xs font-medium text-slate-500">
-                  Selected: {(photoFile.size / 1024 / 1024).toFixed(2)} MB
+              <div className="flex flex-col items-center gap-3 mb-6 w-full p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                <span className="text-xs font-medium text-blue-800">
+                  Ready to upload: {(photoFile.size / 1024 / 1024).toFixed(2)} MB
                 </span>
                 <div className="flex gap-2 w-full">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={cancelPhotoUpload} disabled={uploading}>Cancel</Button>
-                  <Button size="sm" className="flex-1" onClick={handlePhotoUpload} disabled={uploading}>
-                    {uploading ? "Uploading..." : "Confirm Upload"}
+                  <Button size="sm" variant="outline" className="flex-1 bg-white border-blue-200 text-blue-700 hover:bg-blue-50" onClick={cancelPhotoUpload} disabled={uploading}>Cancel</Button>
+                  <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handlePhotoUpload} disabled={uploading}>
+                    {uploading ? "Uploading..." : "Save Photo"}
                   </Button>
                 </div>
               </div>
             )}
             
-            {!photoFile && <span className="text-xs text-muted-foreground mb-4">JPG, PNG or WebP, max 2MB</span>}
+            {!photoFile && <span className="text-xs text-slate-400 mb-2">JPG, PNG or WebP (max 2MB)</span>}
             
-            <h3 className="text-xl font-bold">{student.user.name}</h3>
+            <h3 className="text-2xl font-bold text-slate-900">{student.user.name}</h3>
+            <p className="text-sm font-medium text-blue-600 mt-1 uppercase tracking-wider">Student ID: {student.id.substring(0, 8)}</p>
             
-            <div className="w-full space-y-2 text-sm text-left border-t pt-4 mt-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Roll No:</span>
-                <span className="font-medium ml-2">{student.rollNo}</span>
+            <div className="w-full mt-6 pt-6 border-t border-slate-100 grid gap-4">
+              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-slate-500 font-medium">Roll Number</p>
+                  <p className="text-sm font-bold text-slate-900">{student.rollNo}</p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Class:</span>
-                <span className="font-medium ml-2">{student.class} - {student.section}</span>
+              
+              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-slate-500 font-medium">Class & Section</p>
+                  <p className="text-sm font-bold text-slate-900">{student.class} - {student.section}</p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">DOB:</span>
-                <span className="font-medium ml-2">{new Date(student.dob).toLocaleDateString()}</span>
+              
+              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center shrink-0">
+                  <CalendarDays className="w-4 h-4 text-cyan-600" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-slate-500 font-medium">Date of Birth</p>
+                  <p className="text-sm font-bold text-slate-900">{new Date(student.dob).toLocaleDateString('en-IN')}</p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 text-xs text-muted-foreground text-left p-3 bg-slate-50 rounded-md border">
-              These details are managed by your school admin.
+            <div className="mt-6 text-xs text-slate-500 text-center p-3 bg-amber-50/50 rounded-lg border border-amber-100 w-full">
+              Academic details are locked. Contact administration for changes.
             </div>
           </CardContent>
         </Card>
@@ -227,149 +195,64 @@ export default function StudentProfile() {
         {/* RIGHT CARD - Tabs for Info and Password */}
         <div className="col-span-1 md:col-span-2">
           <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="info">My Info</TabsTrigger>
-              <TabsTrigger value="password">Change Password</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 p-1 bg-slate-100">
+              <TabsTrigger value="info" className="data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm rounded-md transition-all py-2">Contact Info</TabsTrigger>
+              <TabsTrigger value="password" className="data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm rounded-md transition-all py-2 flex items-center gap-2"><KeyRound className="w-4 h-4" /> Security</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="info">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Contact Information</CardTitle>
+            <TabsContent value="info" className="mt-0">
+              <Card className="border-blue-100 shadow-sm">
+                <CardHeader className="bg-blue-50/30 border-b border-blue-50 pb-4">
+                  <CardTitle className="text-blue-900 text-lg">Contact Information</CardTitle>
+                  <CardDescription>Your registered contact details for school communications.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground">Parent Name</Label>
-                      <div className="p-2 bg-slate-50 rounded-md border text-sm font-medium">{student.parentName}</div>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2.5 p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:border-blue-100 transition-colors">
+                      <Label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-blue-500" /> Parent/Guardian
+                      </Label>
+                      <div className="text-sm font-bold text-slate-800">{student.parentName}</div>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground">Contact Number</Label>
-                      <div className="p-2 bg-slate-50 rounded-md border text-sm font-medium">{student.contact}</div>
+                    
+                    <div className="space-y-2.5 p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:border-blue-100 transition-colors">
+                      <Label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-blue-500" /> Contact Number
+                      </Label>
+                      <div className="text-sm font-bold text-slate-800">{student.contact}</div>
                     </div>
-                    <div className="space-y-2 col-span-1 md:col-span-2">
-                      <Label className="text-muted-foreground">Email Address</Label>
-                      <div className="p-2 bg-slate-50 rounded-md border text-sm font-medium">{student.user.email}</div>
+                    
+                    <div className="space-y-2.5 p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:border-blue-100 transition-colors col-span-1 md:col-span-2">
+                      <Label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-blue-500" /> Email Address
+                      </Label>
+                      <div className="text-sm font-bold text-slate-800">{student.user.email}</div>
                     </div>
-                    <div className="space-y-2 col-span-1 md:col-span-2">
-                      <Label className="text-muted-foreground">Home Address</Label>
-                      <div className="p-2 bg-slate-50 rounded-md border text-sm font-medium">{student.address}</div>
+                    
+                    <div className="space-y-2.5 p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:border-blue-100 transition-colors col-span-1 md:col-span-2">
+                      <Label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500" /> Home Address
+                      </Label>
+                      <div className="text-sm font-medium text-slate-800 leading-relaxed">{student.address}</div>
                     </div>
                   </div>
                   
-                  <div className="pt-4 text-sm text-muted-foreground border-t mt-4">
-                    To update your personal information, please contact the school admin.
+                  <div className="mt-8 text-sm text-slate-500 p-4 bg-slate-50 border border-slate-100 rounded-lg text-center flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">i</span>
+                    <span>Need to update your phone number or address? Please submit a written request to the school administration office.</span>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="password">
-              <Card>
-                <CardHeader>
-                  <CardTitle>🔒 Change Password</CardTitle>
+            <TabsContent value="password" className="mt-0">
+              <Card className="border-blue-100 shadow-sm">
+                <CardHeader className="bg-blue-50/30 border-b border-blue-50 pb-4">
+                  <CardTitle className="text-blue-900 text-lg">Change Password</CardTitle>
+                  <CardDescription>Update your account password to ensure security.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Current Password</Label>
-                    <div className="relative">
-                      <Input 
-                        type={showPasswords.current ? "text" : "password"} 
-                        value={passwordForm.currentPassword} 
-                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                        className="pr-10"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>New Password</Label>
-                    <div className="relative">
-                      <Input 
-                        type={showPasswords.new ? "text" : "password"} 
-                        value={passwordForm.newPassword} 
-                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                        className="pr-10"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    
-                    {passwordForm.newPassword && (
-                      <div className="space-y-2 mt-2 p-3 bg-slate-50 rounded-md border text-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium text-xs">Password strength:</span>
-                          <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${strength.color} transition-all`} 
-                              style={{ 
-                                width: strength.label === "Weak" ? "33%" : strength.label === "Medium" ? "66%" : strength.label === "Strong" ? "100%" : "0%" 
-                              }}
-                            />
-                          </div>
-                          <span className={`text-xs font-semibold ${strength.label === "Weak" ? "text-red-500" : strength.label === "Medium" ? "text-orange-500" : "text-green-500"}`}>
-                            {strength.label}
-                          </span>
-                        </div>
-                        <ul className="space-y-1 text-muted-foreground text-xs">
-                          <li className={strength.checks.length ? "text-green-600 font-medium" : ""}>
-                            {strength.checks.length ? "✓" : "✗"} At least 8 characters
-                          </li>
-                          <li className={strength.checks.upper ? "text-green-600 font-medium" : ""}>
-                            {strength.checks.upper ? "✓" : "✗"} One uppercase letter
-                          </li>
-                          <li className={strength.checks.number ? "text-green-600 font-medium" : ""}>
-                            {strength.checks.number ? "✓" : "✗"} One number
-                          </li>
-                          <li className={strength.checks.special ? "text-green-600 font-medium" : ""}>
-                            {strength.checks.special ? "✓" : "✗"} One special character
-                          </li>
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Confirm New Password</Label>
-                    <div className="relative">
-                      <Input 
-                        type={showPasswords.confirm ? "text" : "password"} 
-                        value={passwordForm.confirmPassword} 
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                        className="pr-10"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
-                      <p className="text-red-500 text-xs mt-1">Passwords do not match</p>
-                    )}
-                  </div>
-
-                  <Button 
-                    className="w-full mt-4" 
-                    onClick={handlePasswordChange} 
-                    disabled={changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
-                  >
-                    {changingPassword ? "Changing..." : "Change Password"}
-                  </Button>
+                <CardContent className="pt-6">
+                  <PasswordChangeForm apiEndpoint="/api/students/me/password" />
                 </CardContent>
               </Card>
             </TabsContent>

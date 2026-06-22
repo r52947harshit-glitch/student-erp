@@ -9,11 +9,22 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { Search, Plus, Edit, UserX, UserCheck } from "lucide-react"
+import { Search, Plus, UserX, UserCheck, MoreHorizontal, Pencil, Users, CheckCircle, Copy, Printer } from "lucide-react"
 import { CLASS_LIST, SUBJECT_LIST, QUALIFICATION_LIST } from "@/lib/constants"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ClassTeacherTab } from "./ClassTeacherTab"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { DataBadge } from "@/components/shared/DataBadge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getInitials, getAvatarColor } from "@/lib/formatters"
+import { cn } from "@/lib/utils"
 
 export default function ManageTeachers() {
   const [teachers, setTeachers] = useState<any[]>([])
@@ -27,6 +38,7 @@ export default function ManageTeachers() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [modalStep, setModalStep] = useState(1) // 1: Basic Info, 2: Assign Classes
   
   // Form State
@@ -42,7 +54,7 @@ export default function ManageTeachers() {
   })
   
   // Credentials Display
-  const [credentials, setCredentials] = useState<{email: string, tempPassword: string, employeeId: string} | null>(null)
+  const [credentials, setCredentials] = useState<{email: string, tempPassword: string, employeeId: string, name: string} | null>(null)
 
   const { toast } = useToast()
 
@@ -77,6 +89,7 @@ export default function ManageTeachers() {
       id: "", name: "", email: "", phone: "", address: "", qualification: "", joiningDate: "", assignedClasses: []
     })
     setCredentials(null)
+    setSuccess(false)
     setIsModalOpen(true)
   }
 
@@ -97,6 +110,7 @@ export default function ManageTeachers() {
       })),
     })
     setCredentials(null)
+    setSuccess(false)
     setIsModalOpen(true)
   }
 
@@ -147,18 +161,23 @@ export default function ManageTeachers() {
       
       if (!res.ok) throw new Error(result.error)
       
+      setSuccess(true)
       toast({ title: "Success", description: isEditing ? "Teacher updated" : "Teacher added successfully" })
       
-      if (!isEditing && result.credentials) {
-        setCredentials({ ...result.credentials, employeeId: result.teacher.employeeId })
-        fetchTeachers()
-      } else {
-        setIsModalOpen(false)
-        fetchTeachers()
-      }
+      setTimeout(() => {
+        if (!isEditing && result.credentials) {
+          setCredentials({ ...result.credentials, employeeId: result.teacher.employeeId, name: formData.name })
+          fetchTeachers()
+        } else {
+          setIsModalOpen(false)
+          fetchTeachers()
+        }
+        setSubmitting(false)
+        setSuccess(false)
+      }, 500)
+
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" })
-    } finally {
       setSubmitting(false)
     }
   }
@@ -208,133 +227,171 @@ export default function ManageTeachers() {
   const paginatedTeachers = filteredTeachers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h2 className="text-3xl font-bold tracking-tight">Manage Teachers</h2>
-        <div className="flex gap-2">
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader 
+        title="Manage Teachers" 
+        description="View, add, edit, and manage all teachers in the school."
+        action={
           <Button onClick={openAddModal}>
             <Plus className="mr-2 h-4 w-4" /> Add Teacher
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <Card>
-        <CardHeader className="py-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search name or employee ID..."
-                className="w-full pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <div className="w-full md:w-48">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Status</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? <LoadingSpinner /> : (
-            <div className="space-y-4">
-              <div className="border rounded-md overflow-x-auto">
-                <Table className="min-w-[900px]">
-                  <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee ID</TableHead>
-                    <TableHead>Teacher</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Classes Assigned</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTeachers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">No teachers found.</TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedTeachers.map(teacher => (
-                      <TableRow key={teacher.id}>
-                        <TableCell className="font-medium">{teacher.employeeId}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            {teacher.photoUrl ? (
-                              <img src={teacher.photoUrl} className="h-8 w-8 rounded-full object-cover" alt="" />
-                            ) : (
-                              <div className="h-8 w-8 rounded-full bg-slate-200" />
-                            )}
-                            <div>
-                              <div className="font-medium">{teacher.user.name}</div>
-                              <div className="text-xs text-muted-foreground">{teacher.user.email}</div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{teacher.phone}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {teacher.assignedClasses.map((ac: any) => (
-                              <Badge key={ac.id} variant="outline" title={ac.subjects.join(", ")}>
-                                Class {ac.className}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={teacher.user.isActive ? "default" : "secondary"} className={teacher.user.isActive ? "bg-green-600 hover:bg-green-700" : ""}>
-                            {teacher.user.isActive ? "ACTIVE" : "INACTIVE"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => openEditModal(teacher)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeactivate(teacher.id, teacher.user.isActive)}>
-                            {teacher.user.isActive ? <UserX className="h-4 w-4 text-red-500" /> : <UserCheck className="h-4 w-4 text-green-500" />}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredTeachers.length)} of {filteredTeachers.length}
+      <Tabs defaultValue="all-teachers" className="w-full">
+        <TabsList className="mb-4 bg-slate-100">
+          <TabsTrigger value="all-teachers">All Teachers</TabsTrigger>
+          <TabsTrigger value="class-teachers">Class Teachers</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all-teachers" className="mt-0">
+          <Card>
+            <CardHeader className="py-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search name or employee ID..."
+                    className="pl-9"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                    Previous
-                  </Button>
-                  <div className="text-sm font-medium">Page {currentPage} of {totalPages}</div>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                    Next
-                  </Button>
-                </div>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Status</SelectItem>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardHeader>
+            <CardContent className="p-0 sm:p-6 sm:pt-0">
+              {loading ? <div className="py-8"><LoadingSpinner /></div> : (
+                <div className="space-y-4">
+                  {filteredTeachers.length === 0 ? (
+                    <EmptyState 
+                      icon={Users}
+                      title="No teachers found"
+                      description="We couldn't find any teachers matching your filters. Try adjusting your search or add a new teacher."
+                      action={search || filterStatus !== "ALL" ? { label: "Clear Filters", onClick: () => { setSearch(""); setFilterStatus("ALL"); } } : undefined}
+                    />
+                  ) : (
+                    <div className="rounded-md border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[900px]">
+                          <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                            <TableRow>
+                              <TableHead>Employee ID</TableHead>
+                              <TableHead>Teacher</TableHead>
+                              <TableHead>Contact</TableHead>
+                              <TableHead>Classes Assigned</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedTeachers.map(teacher => (
+                              <TableRow key={teacher.id} className="hover:bg-muted/50">
+                                <TableCell className="font-medium">{teacher.employeeId}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
+                                      <AvatarImage src={teacher.photoUrl || ""} />
+                                      <AvatarFallback className={cn("text-white font-medium", getAvatarColor(teacher.user?.name || "T"))}>
+                                        {getInitials(teacher.user?.name || "T")}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="font-medium flex items-center gap-2">
+                                        {teacher.user.name}
+                                        {teacher.isClassTeacher && (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700">
+                                            Class Teacher
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">{teacher.user.email}</div>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{teacher.phone}</TableCell>
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-1">
+                                    {teacher.assignedClasses.map((ac: any) => (
+                                      <Badge key={ac.id} variant="outline" title={ac.subjects.join(", ")}>
+                                        Class {ac.className}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <DataBadge status={teacher.user.isActive ? "ACTIVE" : "INACTIVE"} />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="hover:bg-muted">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => openEditModal(teacher)}>
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDeactivate(teacher.id, teacher.user.isActive)}
+                                        className={teacher.user.isActive ? "text-destructive focus:text-destructive" : "text-green-600 focus:text-green-600"}
+                                      >
+                                        {teacher.user.isActive ? (
+                                          <><UserX className="mr-2 h-4 w-4" /> Deactivate</>
+                                        ) : (
+                                          <><UserCheck className="mr-2 h-4 w-4" /> Reactivate</>
+                                        )}
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-2 pt-4">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredTeachers.length)} of {filteredTeachers.length}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                          Previous
+                        </Button>
+                        <div className="text-sm font-medium">Page {currentPage} of {totalPages}</div>
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="class-teachers" className="mt-0">
+          <ClassTeacherTab teachers={teachers} />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isModalOpen} onOpenChange={(open) => !submitting && setIsModalOpen(open)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-2xl mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle>{isEditing ? "Edit Teacher" : "Add New Teacher"}</DialogTitle>
             <DialogDescription>
@@ -343,19 +400,59 @@ export default function ManageTeachers() {
           </DialogHeader>
           
           {credentials ? (
-            <div className="bg-green-50 p-6 rounded-md border border-green-200 space-y-4">
-              <h3 className="text-lg font-bold text-green-800">Teacher Created Successfully!</h3>
-              <p className="text-sm text-green-700">Share these login credentials with the teacher. They can update their profile after first login.</p>
-              <div className="bg-white p-4 rounded border font-mono">
-                <p><strong>Employee ID:</strong> {credentials.employeeId}</p>
-                <p><strong>Email:</strong> {credentials.email}</p>
-                <p><strong>Temp Password:</strong> {credentials.tempPassword}</p>
+            <div className="space-y-6 py-4">
+              <div className="bg-green-50 p-6 rounded-xl border border-green-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-green-900">Teacher Created!</h3>
+                    <p className="text-sm text-green-700">Share these login credentials with the teacher.</p>
+                  </div>
+                </div>
+                
+                <div id="credential-card" className="bg-white p-5 rounded-lg border shadow-sm print:shadow-none font-mono text-sm space-y-3">
+                  <div className="border-b pb-3 mb-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">School ERP - Teacher Login</p>
+                    <p className="font-bold text-lg">{credentials.name}</p>
+                    <p className="text-muted-foreground">Employee ID: {credentials.employeeId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Login Email</p>
+                    <p className="font-medium text-base">{credentials.email}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Temporary Password</p>
+                      <p className="font-medium text-base">{credentials.tempPassword}</p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      className="print:hidden"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`Employee ID: ${credentials.employeeId}\nEmail: ${credentials.email}\nPassword: ${credentials.tempPassword}`);
+                        toast({ title: "Copied to clipboard" });
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" /> Copy
+                    </Button>
+                  </div>
+                  <div className="pt-2">
+                    <div className="h-1.5 w-full bg-orange-200 rounded-full overflow-hidden flex">
+                      <div className="h-full bg-orange-500 w-1/3"></div>
+                    </div>
+                    <p className="text-[10px] text-orange-600 mt-1">Weak password. Teacher should change it on first login.</p>
+                  </div>
+                </div>
               </div>
-              <Button onClick={() => {
-                navigator.clipboard.writeText(`Employee ID: ${credentials.employeeId}\nEmail: ${credentials.email}\nPassword: ${credentials.tempPassword}`);
-                toast({ title: "Copied to clipboard" });
-              }} variant="outline" className="w-full">Copy Credentials</Button>
-              <Button onClick={() => setIsModalOpen(false)} className="w-full">Done</Button>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => window.print()}>
+                  <Printer className="mr-2 h-4 w-4" /> Print Card
+                </Button>
+                <Button className="flex-1" onClick={() => setIsModalOpen(false)}>Done</Button>
+              </div>
             </div>
           ) : (
             <form onSubmit={modalStep === 1 ? (e) => { e.preventDefault(); setModalStep(2); } : handleSubmit}>
@@ -437,7 +534,7 @@ export default function ManageTeachers() {
                 </div>
               )}
               
-              <DialogFooter>
+              <DialogFooter className="mt-4">
                 {modalStep === 1 ? (
                   <>
                     <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
@@ -447,7 +544,7 @@ export default function ManageTeachers() {
                   <>
                     <Button variant="outline" type="button" onClick={() => setModalStep(1)}>← Back</Button>
                     <Button type="submit" disabled={submitting}>
-                      {submitting ? "Saving..." : (isEditing ? "Save Changes" : "Add Teacher")}
+                      {submitting ? "Saving..." : success ? <CheckCircle className="mr-2 h-4 w-4 text-white" /> : (isEditing ? "Save Changes" : "Add Teacher")}
                     </Button>
                   </>
                 )}

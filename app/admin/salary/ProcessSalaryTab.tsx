@@ -127,9 +127,10 @@ export function ProcessSalaryTab() {
         {loading && <LoadingSpinner />}
 
         {!loading && rows.length > 0 && (
-          <div className="border rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b">
+          <div className="rounded-md border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b">
                 <tr>
                   <th className="text-left p-3 font-semibold">Teacher</th>
                   <th className="text-right p-3 font-semibold">Present</th>
@@ -200,14 +201,15 @@ export function ProcessSalaryTab() {
                   </>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         )}
 
         {/* Confirm Dialog */}
         {confirmDialog && (
           <Dialog open={!!confirmDialog} onOpenChange={() => setConfirmDialog(null)}>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto w-full max-w-lg mx-4 sm:mx-auto">
               <DialogHeader><DialogTitle>Confirm Salary Payment</DialogTitle></DialogHeader>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Teacher:</span><span className="font-medium">{confirmDialog.teacher.name}</span></div>

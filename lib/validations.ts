@@ -60,10 +60,10 @@ export const addTeacherSchema = z.object({
   }),
   assignedClasses: z.array(
     z.object({
-      className: z.string(),
-      subjects: z.array(z.string()).min(1, "Select at least one subject"),
+      className: z.string().min(1, "Class name is required"),
+      subjects: z.array(z.string().min(1)).min(1, "Select at least one subject per class"),
     })
-  ).min(1, "Assign at least one class"),
+  ).min(1, "Assign at least one class to the teacher"),
 })
 
 export const updateTeacherSchema = z.object({

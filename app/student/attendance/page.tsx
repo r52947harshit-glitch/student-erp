@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isWeekend, isFuture } from "date-fns"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react"
+import { PageHeader } from "@/components/shared/PageHeader"
+import { CalendarCheck, ChevronLeft, ChevronRight, Activity, TrendingUp, TrendingDown, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const MONTHS = [
@@ -68,89 +67,118 @@ export default function StudentAttendance() {
   }
 
   const getCellColor = (date: Date) => {
-    if (isFuture(date)) return "bg-slate-50 text-slate-300"
-    if (isWeekend(date)) return "bg-slate-100 text-slate-400"
+    if (isFuture(date)) return "bg-slate-50 text-slate-300 border-slate-100"
+    if (isWeekend(date)) return "bg-slate-100/50 text-slate-400 border-slate-200"
 
     const status = getStatusForDate(date)
     switch (status) {
-      case "PRESENT": return "bg-green-100 text-green-800 border-green-300 font-bold"
-      case "ABSENT": return "bg-red-100 text-red-800 border-red-300 font-bold"
-      case "LEAVE": return "bg-yellow-100 text-yellow-800 border-yellow-300 font-bold"
-      default: return "bg-slate-50 text-slate-400" // no record
+      case "PRESENT": return "bg-emerald-50 text-emerald-800 border-emerald-200 shadow-sm"
+      case "ABSENT": return "bg-rose-50 text-rose-800 border-rose-200 shadow-sm"
+      case "LEAVE": return "bg-amber-50 text-amber-800 border-amber-200 shadow-sm"
+      default: return "bg-white text-slate-600 border-slate-200 hover:border-blue-200" // no record
     }
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold tracking-tight text-blue-900">My Attendance</h2>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader 
+        title="My Attendance" 
+        description="Track your daily attendance records and monthly statistics."
+      />
 
       {/* Overall Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="text-center border-blue-100">
-            <CardContent className="pt-6">
-              <p className="text-3xl font-bold text-blue-700">{stats.percentage}%</p>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Overall Attendance</p>
+          <Card className="text-center border-blue-200 shadow-sm bg-gradient-to-br from-blue-50 to-white col-span-2 md:col-span-1">
+            <CardContent className="pt-6 pb-6">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3">
+                <Activity className="w-5 h-5 text-blue-600" />
+              </div>
+              <p className="text-4xl font-black text-blue-700">{stats.percentage}%</p>
+              <p className="text-xs text-blue-600/80 font-bold uppercase tracking-wider mt-2">Overall Rate</p>
             </CardContent>
           </Card>
-          <Card className="text-center border-green-100">
-            <CardContent className="pt-6">
-              <p className="text-2xl font-bold text-green-700">{stats.presentDays}</p>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Present</p>
+          
+          <Card className="text-center border-emerald-100 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="pt-6 pb-6">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+              </div>
+              <p className="text-3xl font-bold text-emerald-700">{stats.presentDays}</p>
+              <p className="text-xs text-emerald-600/80 font-bold uppercase tracking-wider mt-2">Present</p>
             </CardContent>
           </Card>
-          <Card className="text-center border-red-100">
-            <CardContent className="pt-6">
-              <p className="text-2xl font-bold text-red-700">{stats.absentDays}</p>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Absent</p>
+          
+          <Card className="text-center border-rose-100 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="pt-6 pb-6">
+              <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-3">
+                <TrendingDown className="w-4 h-4 text-rose-600" />
+              </div>
+              <p className="text-3xl font-bold text-rose-700">{stats.absentDays}</p>
+              <p className="text-xs text-rose-600/80 font-bold uppercase tracking-wider mt-2">Absent</p>
             </CardContent>
           </Card>
-          <Card className="text-center border-yellow-100">
-            <CardContent className="pt-6">
-              <p className="text-2xl font-bold text-yellow-700">{stats.leaveDays}</p>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Leave</p>
+          
+          <Card className="text-center border-amber-100 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="pt-6 pb-6">
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                <Clock className="w-4 h-4 text-amber-600" />
+              </div>
+              <p className="text-3xl font-bold text-amber-700">{stats.leaveDays}</p>
+              <p className="text-xs text-amber-600/80 font-bold uppercase tracking-wider mt-2">Leave</p>
             </CardContent>
           </Card>
-          <Card className="text-center border-slate-100">
-            <CardContent className="pt-6">
-              <p className="text-2xl font-bold text-slate-700">{stats.totalDays}</p>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Total Days</p>
+          
+          <Card className="text-center border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="pt-6 pb-6">
+              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                <CalendarCheck className="w-4 h-4 text-slate-600" />
+              </div>
+              <p className="text-3xl font-bold text-slate-700">{stats.totalDays}</p>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-2">Total Days</p>
             </CardContent>
           </Card>
         </div>
       )}
 
       {/* Calendar Card */}
-      <Card className="border-blue-100">
-        <CardHeader className="bg-blue-50/50">
-          <div className="flex items-center justify-between">
+      <Card className="border-blue-100 shadow-sm overflow-hidden">
+        <CardHeader className="bg-blue-50/50 border-b border-blue-50 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <CalendarCheck className="w-5 h-5 text-blue-600" />
-              <CardTitle className="text-lg">Attendance Calendar</CardTitle>
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
+                <CalendarCheck className="w-4 h-4" />
+              </div>
+              <CardTitle className="text-lg text-blue-950">Attendance Calendar</CardTitle>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={handlePrevMonth}><ChevronLeft className="w-4 h-4" /></Button>
-              <span className="text-sm font-bold min-w-[140px] text-center">{MONTHS[month - 1]} {year}</span>
-              <Button variant="ghost" size="icon" onClick={handleNextMonth} disabled={month === now.getMonth() + 1 && year === now.getFullYear()}>
+            
+            <div className="flex items-center gap-2 bg-white rounded-lg border shadow-sm p-1">
+              <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 hover:bg-slate-100 hover:text-blue-700">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="text-sm font-bold w-[130px] text-center text-slate-800 uppercase tracking-wide">
+                {MONTHS[month - 1]} {year}
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleNextMonth} disabled={month === now.getMonth() + 1 && year === now.getFullYear()} className="h-8 w-8 hover:bg-slate-100 hover:text-blue-700">
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-6 pb-8 px-4 sm:px-8">
           {loading ? (
-            <div className="flex justify-center p-12"><LoadingSpinner /></div>
+            <div className="flex justify-center py-24"><LoadingSpinner /></div>
           ) : (
-            <>
+            <div className="max-w-3xl mx-auto">
               {/* Day headers */}
-              <div className="grid grid-cols-7 gap-1 mb-2">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
                 {DAYS_HEADER.map(d => (
-                  <div key={d} className="text-center text-xs font-bold text-muted-foreground py-2">{d}</div>
+                  <div key={d} className="text-center text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wider py-2">{d}</div>
                 ))}
               </div>
 
               {/* Calendar cells */}
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
                 {/* Empty spacers for alignment */}
                 {Array.from({ length: startDayOfWeek }).map((_, i) => (
                   <div key={`empty-${i}`} className="aspect-square" />
@@ -163,12 +191,17 @@ export default function StudentAttendance() {
                   return (
                     <div
                       key={day.toISOString()}
-                      className={`aspect-square flex flex-col items-center justify-center rounded-lg border text-xs transition-all ${cellColor}`}
+                      className={`aspect-square flex flex-col items-center justify-center rounded-xl border-2 transition-all ${cellColor}`}
                       title={status ? `${format(day, "PP")}: ${status}` : format(day, "PP")}
                     >
-                      <span className="font-medium">{day.getDate()}</span>
+                      <span className={`text-sm sm:text-base ${status ? 'font-black' : 'font-semibold'}`}>
+                        {day.getDate()}
+                      </span>
                       {status && (
-                        <span className="text-[9px] font-bold mt-0.5">
+                        <span className={`text-[10px] sm:text-xs font-bold mt-1 tracking-wider ${
+                          status === 'PRESENT' ? 'text-emerald-600' :
+                          status === 'ABSENT' ? 'text-rose-600' : 'text-amber-600'
+                        }`}>
                           {status === "PRESENT" ? "P" : status === "ABSENT" ? "A" : "L"}
                         </span>
                       )}
@@ -178,13 +211,25 @@ export default function StudentAttendance() {
               </div>
 
               {/* Legend */}
-              <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t">
-                <div className="flex items-center gap-2 text-xs"><div className="w-4 h-4 rounded bg-green-200 border border-green-300" /> Present</div>
-                <div className="flex items-center gap-2 text-xs"><div className="w-4 h-4 rounded bg-red-200 border border-red-300" /> Absent</div>
-                <div className="flex items-center gap-2 text-xs"><div className="w-4 h-4 rounded bg-yellow-200 border border-yellow-300" /> Leave</div>
-                <div className="flex items-center gap-2 text-xs"><div className="w-4 h-4 rounded bg-slate-100 border border-slate-200" /> Holiday / No Data</div>
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mt-10 pt-6 border-t border-slate-100">
+                <div className="flex items-center gap-2.5 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm" /> 
+                  <span className="text-xs font-bold text-slate-700 tracking-wide uppercase">Present</span>
+                </div>
+                <div className="flex items-center gap-2.5 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                  <div className="w-3 h-3 rounded-full bg-rose-400 shadow-sm" /> 
+                  <span className="text-xs font-bold text-slate-700 tracking-wide uppercase">Absent</span>
+                </div>
+                <div className="flex items-center gap-2.5 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                  <div className="w-3 h-3 rounded-full bg-amber-400 shadow-sm" /> 
+                  <span className="text-xs font-bold text-slate-700 tracking-wide uppercase">Leave</span>
+                </div>
+                <div className="flex items-center gap-2.5 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                  <div className="w-3 h-3 rounded-full bg-slate-200 shadow-sm" /> 
+                  <span className="text-xs font-bold text-slate-500 tracking-wide uppercase">Holiday / No Data</span>
+                </div>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>

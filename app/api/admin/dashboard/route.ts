@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { startOfMonth, subMonths, format, startOfDay, endOfDay } from "date-fns"
 import { validateSession } from "@/lib/apiAuth"
+import { CLASS_LIST } from "@/lib/constants"
 
 export async function GET() {
   const { errorResponse } = await validateSession(["ADMIN"])
@@ -110,6 +111,10 @@ export async function GET() {
     const totalSalaryPaid = paidThisMonth.reduce((sum, p) => sum + p.netSalary, 0)
     const salaryDueCount = activeTeachersWithConfig - paidThisMonth.length
 
+    // Class Teacher metrics
+    const classTeacherCount = await prisma.classTeacher.count()
+    const classesWithoutTeacher = Math.max(0, CLASS_LIST.length - classTeacherCount)
+
     return NextResponse.json({
       metrics: {
         totalStudents,
@@ -119,6 +124,7 @@ export async function GET() {
         attendanceSummary,
         salaryDueCount: Math.max(0, salaryDueCount),
         totalSalaryPaid,
+        classesWithoutTeacher,
       },
       charts: {
         feeCollection: feeCollectionChart,
