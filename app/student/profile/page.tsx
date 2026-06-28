@@ -98,7 +98,7 @@ export default function StudentProfile() {
   if (loading) return <div className="py-20"><LoadingSpinner /></div>
   if (!student) return <div className="p-6 text-center text-red-500 bg-red-50 rounded-lg">Failed to load profile. Please contact administrator.</div>
 
-  const avatarColor = stringToColor(student.user.name)
+  const avatarColor = stringToColor(student?.user?.name || "S")
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
@@ -123,7 +123,7 @@ export default function StudentProfile() {
                   className="w-32 h-32 rounded-full flex items-center justify-center text-5xl font-bold text-white border-4 border-white shadow-md transition-transform duration-300 group-hover:scale-105"
                   style={{ backgroundColor: avatarColor }}
                 >
-                  {student.user.name.charAt(0)}
+                  {(student?.user?.name || "S").charAt(0)}
                 </div>
               )}
               
@@ -151,7 +151,7 @@ export default function StudentProfile() {
             
             {!photoFile && <span className="text-xs text-slate-400 mb-2">JPG, PNG or WebP (max 2MB)</span>}
             
-            <h3 className="text-2xl font-bold text-slate-900">{student.user.name}</h3>
+            <h3 className="text-2xl font-bold text-slate-900">{student?.user?.name ?? "—"}</h3>
             <p className="text-sm font-medium text-blue-600 mt-1 uppercase tracking-wider">Student ID: {student.id.substring(0, 8)}</p>
             
             <div className="w-full mt-6 pt-6 border-t border-slate-100 grid gap-4">
@@ -226,7 +226,7 @@ export default function StudentProfile() {
                       <Label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 text-blue-500" /> Email Address
                       </Label>
-                      <div className="text-sm font-bold text-slate-800">{student.user.email}</div>
+                      <div className="text-sm font-bold text-slate-800">{student?.user?.email ?? "—"}</div>
                     </div>
                     
                     <div className="space-y-2.5 p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:border-blue-100 transition-colors col-span-1 md:col-span-2">

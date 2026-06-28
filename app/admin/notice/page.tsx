@@ -52,7 +52,8 @@ export default function PostNotice() {
   const fetchNotices = async () => {
     try {
       const res = await fetch("/api/notices")
-      setNotices(await res.json())
+      const data = await res.json()
+      setNotices(data)
     } catch {
       toast({
         title: "Error",

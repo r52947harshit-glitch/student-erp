@@ -4,6 +4,8 @@ import { validateSession } from "@/lib/apiAuth"
 import { calculateSalary } from "@/lib/salaryCalculator"
 import { createSalaryPayout } from "@/lib/razorpayPayout"
 import { startOfMonth, endOfMonth } from "date-fns"
+import { notifySalaryProcessed } from "@/lib/notificationService"
+import logger from "@/lib/logger"
 
 const MONTH_NAMES = [
   "", "January", "February", "March", "April", "May", "June",
@@ -12,9 +14,22 @@ const MONTH_NAMES = [
 
 export async function POST(request: Request) {
   const { errorResponse, session } = await validateSession(["ADMIN"])
-  if (errorResponse || !session) return errorResponse
+  if (errorResponse || !session) return errorResponse || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
+    // Rate Limiting: 5 payments per minute per admin
+    const oneMinuteAgo = new Date(Date.now() - 60000)
+    const recentPayments = await prisma.salaryPayment.count({
+      where: {
+        processedBy: session.user.id,
+        createdAt: { gte: oneMinuteAgo }
+      }
+    })
+
+    if (recentPayments >= 5) {
+      return NextResponse.json({ error: "Too many salary payments processed in a short time. Please wait a minute." }, { status: 429 })
+    }
+
     const body = await request.json()
     const { teacherId, month, year } = body
 
@@ -146,6 +161,10 @@ export async function POST(request: Request) {
           note: `Salary ₹${breakdown.netSalary} paid to ${teacher.user.name} (${MONTH_NAMES[month]} ${year}). Payout ID: ${payout.id}`,
         },
       })
+
+      // Notify teacher
+      notifySalaryProcessed(teacher.userId, breakdown.netSalary, MONTH_NAMES[month], year)
+        .catch((e) => logger.error("Notification failed:", e))
 
       return NextResponse.json({
         success: true,

@@ -7,18 +7,26 @@ export async function GET() {
   if (errorResponse) return errorResponse
 
   try {
-    // SECURITY: Use session.user.id strictly to extract the profile
-    const student = await prisma.student.findUnique({
-      where: { userId: session.user.id },
-      include: {
-        user: { select: { name: true, email: true } },
-        attendance: true,
-        payments: { where: { status: "PENDING" } },
-        results: {
-           orderBy: { createdAt: 'desc' }
+    // Run student profile query, current academic year query, and total notices count query in parallel
+    const [student, currentYear, totalNotices] = await Promise.all([
+      prisma.student.findUnique({
+        where: { userId: session!.user.id },
+        include: {
+          user: { select: { name: true, email: true } },
+          attendance: true,
+          payments: { where: { status: "PENDING" } },
+          results: {
+             orderBy: { createdAt: 'desc' }
+          }
         }
-      }
-    })
+      }),
+      prisma.academicYear.findFirst({
+        where: { isCurrent: true }
+      }),
+      prisma.notice.count({
+        where: { targetRole: { in: ["ALL", "STUDENT"] } }
+      })
+    ])
 
     if (!student) return NextResponse.json({ error: "Student profile not linked properly" }, { status: 404 })
 
@@ -51,11 +59,6 @@ export async function GET() {
       }
     }
 
-    // Determine notice target volume
-    const totalNotices = await prisma.notice.count({
-      where: { targetRole: { in: ["ALL", "STUDENT"] } }
-    })
-
     // Assignments Due Soon
     const threeDaysFromNow = new Date()
     threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
@@ -83,9 +86,12 @@ export async function GET() {
         class: student.class,
         section: student.section,
         rollNo: student.rollNo,
+        admissionNo: student.admissionNo,
+        admissionYear: student.admissionYear,
         photoUrl: student.photoUrl,
         email: student.user.email
       },
+      currentAcademicYear: currentYear?.year || "N/A",
       metrics: {
         attendancePercentage: attendancePercentage.toFixed(1),
         hasPendingFees,

@@ -8,10 +8,10 @@ import { handlePrismaError } from "@/lib/prisma-error"
 
 export async function POST(request: Request) {
   const { errorResponse, session } = await validateSession(["STUDENT"])
-  if (errorResponse) return errorResponse
+  if (errorResponse || !session) return errorResponse || NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   if (!razorpay) {
-    return NextResponse.json({ error: "Razorpay is not configured on the server." }, { status: 503 })
+    return NextResponse.json({ error: "Payment gateway not configured." }, { status: 503 })
   }
 
   try {
@@ -22,12 +22,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 })
     }
 
-    const { amount, type } = parseResult.data
+    const { type } = parseResult.data
 
     const student = await prisma.student.findUnique({
       where: { userId: session.user.id }
     })
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
+
+    // Security 1: Fetch correct amount from FeeStructure DB instead of trusting request body
+    const feeStructure = await prisma.feeStructure.findFirst({
+      where: {
+        class: student.class,
+        type: type
+      }
+    })
+
+    if (!feeStructure) {
+      return NextResponse.json({ error: `No fee structure defined for class ${student.class} and type ${type}` }, { status: 404 })
+    }
+
+    const correctAmount = feeStructure.amount
 
     // Rate Limiting: 3 orders per minute per student
     const oneMinuteAgo = new Date(Date.now() - 60000)
@@ -44,7 +58,7 @@ export async function POST(request: Request) {
 
     // Create Order with Razorpay SDK
     const orderOptions = {
-      amount: Math.round(amount * 100), // convert to smallest currency unit (paise)
+      amount: Math.round(correctAmount * 100), // convert to smallest currency unit (paise)
       currency: "INR",
       receipt: `rcpt_${student.rollNo}_${Date.now()}`
     }
@@ -56,7 +70,7 @@ export async function POST(request: Request) {
       data: {
         studentId: student.id,
         razorpayOrderId: order.id,
-        amount: amount,
+        amount: correctAmount,
         type: type,
         status: "PENDING"
       }
@@ -66,7 +80,7 @@ export async function POST(request: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      key: "rzp_test_SdlHVeBzU3Jp0I" // Safe to expose public key
+      key: process.env.RAZORPAY_KEY_ID // Safe to expose public key
     })
 
   } catch (error: any) {

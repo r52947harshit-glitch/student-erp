@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getInitials, getAvatarColor } from "@/lib/formatters"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { NotificationBell } from "./NotificationBell"
 
 export function StudentSidebar() {
   const pathname = usePathname()
@@ -19,10 +20,10 @@ export function StudentSidebar() {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    fetch('/api/student/dashboard')
+    fetch('/api/students/me')
       .then(res => res.json())
       .then(data => {
-         if (!data.error) setStudentData(data.student)
+         if (!data.error) setStudentData(data)
       })
       .catch(console.error)
   }, [])
@@ -63,6 +64,7 @@ export function StudentSidebar() {
             {session?.user?.email}
           </p>
         </div>
+        <NotificationBell />
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3">

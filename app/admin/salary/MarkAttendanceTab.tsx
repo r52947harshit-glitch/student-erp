@@ -30,7 +30,6 @@ export function MarkAttendanceTab() {
   const [records, setRecords] = useState<Record<string, { status: string; note: string }>>({})
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [markedDates, setMarkedDates] = useState<Set<string>>(new Set())
   const { toast } = useToast()
 
   const loadTeachers = async () => {
@@ -55,34 +54,10 @@ export function MarkAttendanceTab() {
     }
   }
 
-  const loadMonthMarks = async () => {
-    const d = new Date(date)
-    const month = d.getMonth() + 1
-    const year = d.getFullYear()
-    try {
-      const res = await fetch(`/api/teacher-attendance?month=${month}&year=${year}`)
-      const data = await res.json()
-      if (res.ok && data.teachers?.length > 0) {
-        // A date is "marked" if at least one teacher has attendance for that date
-        // We'll use the summary — if total > 0, the month has marks
-        // For a simple calendar, let's just fetch all attendance for the month
-        const allRes = await fetch(`/api/teacher-attendance?month=${month}&year=${year}`)
-        const allData = await allRes.json()
-        const dates = new Set<string>()
-        allData.teachers?.forEach((t: any) => {
-          if (t.summary?.total > 0) {
-            // We know this teacher has marks, but not which dates
-            // For simplicity, mark the month as having data
-          }
-        })
-        setMarkedDates(dates)
-      }
-    } catch { /* ignore */ }
-  }
+
 
   useEffect(() => {
     loadTeachers()
-    loadMonthMarks()
   }, [date])
 
   const bulkSet = (status: string) => {

@@ -20,6 +20,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     { name: "Teacher Salary", href: "/admin/salary", icon: Banknote },
     { name: "Fee Management", href: "/admin/fee", icon: Receipt },
     { name: "Post Notice", href: "/admin/notice", icon: Flag },
+    { name: "Academic Year", href: "/admin/academic-year", icon: LayoutDashboard },
   ]
 
   return (

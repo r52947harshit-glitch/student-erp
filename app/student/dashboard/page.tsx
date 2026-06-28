@@ -72,6 +72,10 @@ export default function StudentDashboard() {
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-blue-100 font-medium tracking-wide">
               <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm">Class {student.class}-{student.section}</span>
               <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm">Roll No: {student.rollNo}</span>
+              {student.admissionNo && <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm">Adm No: {student.admissionNo}</span>}
+              <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold border border-blue-300">
+                Session: {data?.currentAcademicYear ?? "N/A"}
+              </span>
             </div>
             <div className="pt-2">
               <Link 

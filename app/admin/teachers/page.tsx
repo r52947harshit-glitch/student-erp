@@ -53,6 +53,10 @@ export default function ManageTeachers() {
     assignedClasses: [] as { className: string; subjects: string[] }[],
   })
   
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoError, setPhotoError] = useState("")
+  
   // Credentials Display
   const [credentials, setCredentials] = useState<{email: string, tempPassword: string, employeeId: string, name: string} | null>(null)
 
@@ -88,6 +92,9 @@ export default function ManageTeachers() {
     setFormData({
       id: "", name: "", email: "", phone: "", address: "", qualification: "", joiningDate: "", assignedClasses: []
     })
+    setPhotoFile(null)
+    setPhotoPreview(null)
+    setPhotoError("")
     setCredentials(null)
     setSuccess(false)
     setIsModalOpen(true)
@@ -109,6 +116,9 @@ export default function ManageTeachers() {
         subjects: ac.subjects
       })),
     })
+    setPhotoFile(null)
+    setPhotoPreview(teacher.photoUrl || null)
+    setPhotoError("")
     setCredentials(null)
     setSuccess(false)
     setIsModalOpen(true)
@@ -141,21 +151,31 @@ export default function ManageTeachers() {
       return
     }
 
+    if (photoError) return
+
     setSubmitting(true)
     try {
       const endpoint = isEditing ? `/api/teachers/${formData.id}` : `/api/teachers`
       const method = isEditing ? `PUT` : `POST`
 
-      const payload = { ...formData }
-      if (isEditing) {
-        // @ts-ignore
-        delete payload.email // Email shouldn't be updated
+      const payload = new FormData()
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'assignedClasses') {
+          payload.append(key, JSON.stringify(value))
+        } else if (value && key !== 'email') { // Omit email if editing logic requires it later, or handle in API
+          payload.append(key, value as string)
+        } else if (key === 'email') {
+          if (!isEditing) payload.append(key, value as string)
+        }
+      })
+
+      if (photoFile) {
+        payload.append("photo", photoFile)
       }
 
       const res = await fetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: payload,
       })
       const result = await res.json()
       
@@ -488,6 +508,47 @@ export default function ManageTeachers() {
                   <div className="col-span-2 space-y-2">
                     <Label>Address</Label>
                     <Input required value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label>Photo Upload</Label>
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16 border-2 border-slate-100">
+                        <AvatarImage src={photoPreview || ""} className="object-cover" />
+                        <AvatarFallback className="bg-slate-50 text-slate-400">
+                          <Users className="h-6 w-6" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-1">
+                        <Input 
+                          type="file" 
+                          accept="image/jpeg,image/png,image/webp" 
+                          className={photoError ? "border-destructive" : ""}
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            setPhotoError("")
+                            if (!file) {
+                              setPhotoFile(null)
+                              setPhotoPreview(null)
+                              return
+                            }
+                            if (file.size > 2 * 1024 * 1024) {
+                              setPhotoError("Image must be under 2MB")
+                              e.target.value = "" // reset
+                              return
+                            }
+                            setPhotoFile(file)
+                            setPhotoPreview(URL.createObjectURL(file))
+                          }} 
+                        />
+                        {photoError ? (
+                          <p className="text-xs text-destructive">{photoError}</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Max size: 2MB. Formats: JPG, PNG, WEBP.
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (

@@ -83,9 +83,31 @@ export default function PayFee() {
         name: "School ERP — Fee Portal",
         description: `${feeType} payment`,
         order_id: orderData.orderId,
-        handler: () => {
-          // Step 6 — begin polling (do NOT trust this callback for status)
-          startPolling(orderData.orderId)
+        handler: async (response: any) => {
+          setPollingOrderId(orderData.orderId)
+          try {
+            const verifyRes = await fetch("/api/payments/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              })
+            })
+            const verifyData = await verifyRes.json()
+            if (!verifyRes.ok) throw new Error(verifyData.error || "Verification failed")
+
+            setPollingOrderId(null)
+            setPayingType(null)
+            setPaymentSuccess(verifyData)
+            toast({ title: "Payment Verified ✅", description: `₹${verifyData.amount} received for ${verifyData.type}` })
+            loadData()
+          } catch (verifyError: any) {
+            setPollingOrderId(null)
+            setPayingType(null)
+            toast({ title: "Verification Error", description: verifyError.message || "Failed to verify transaction.", variant: "destructive" })
+          }
         },
         modal: {
           ondismiss: () => {
@@ -101,6 +123,14 @@ export default function PayFee() {
       }
 
       const rzp = new window.Razorpay(options)
+      rzp.on("payment.failed", (response: any) => {
+        toast({
+          title: "Payment Failed",
+          description: response.error?.description || "Transaction failed.",
+          variant: "destructive"
+        })
+        setPayingType(null)
+      })
       rzp.open()
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "Payment failed to initialize", variant: "destructive" })

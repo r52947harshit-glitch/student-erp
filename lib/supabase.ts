@@ -1,17 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js"
 
-// Validate required environment variables
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
+if (!supabaseUrl) {
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
 }
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
-}
-
-// Public client - for client-side operations (uses anon key)
-// ✅ SAFE to use in browser, components, and client code
+// Public client — for reading public data only
+// Uses anon key — limited permissions
 export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  supabaseUrl,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )

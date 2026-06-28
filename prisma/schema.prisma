@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -14,10 +14,11 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(STUDENT)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  student   Student?
-  teacher   Teacher?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  student       Student?
+  teacher       Teacher?
+  notifications Notification[]
 }
 
 enum Role {
@@ -27,21 +28,24 @@ enum Role {
 }
 
 model Student {
-  id           String       @id @default(cuid())
-  userId       String       @unique
-  user         User         @relation(fields: [userId], references: [id])
-  class        String
-  section      String
-  rollNo       String       @unique
+  id             String                 @id @default(cuid())
+  userId         String                 @unique
+  user           User                   @relation(fields: [userId], references: [id])
+  admissionYear  String                 @default("2024-25")
+  admissionNo    String                 @unique @default(cuid())
+  class          String
+  section        String
+  rollNo         String                 @unique
   parentName   String
   contact      String
   address      String
   photoUrl     String?
   dob          DateTime
   attendance   Attendance[]
-  results      Result[]
-  payments     Payment[]
-  submissions  AssignmentSubmission[]
+  results        Result[]
+  payments       Payment[]
+  submissions    AssignmentSubmission[]
+  yearHistory    StudentYear[]
 }
 
 model Teacher {
@@ -82,13 +86,14 @@ model ClassTeacher {
 }
 
 model Attendance {
-  id        String           @id @default(cuid())
-  studentId String
-  student   Student          @relation(fields: [studentId], references: [id])
-  date      DateTime
-  status    AttendanceStatus
-  markedBy  String
-  createdAt DateTime         @default(now())
+  id             String           @id @default(cuid())
+  studentId      String
+  student        Student          @relation(fields: [studentId], references: [id])
+  academicYearId String?
+  date           DateTime
+  status         AttendanceStatus
+  markedBy       String
+  createdAt      DateTime         @default(now())
 
   @@unique([studentId, date])
 }
@@ -120,18 +125,20 @@ enum ExamType {
 }
 
 model FeeStructure {
-  id       String   @id @default(cuid())
-  class    String
-  type     String
-  amount   Float
-  dueDate  DateTime
+  id             String        @id @default(cuid())
+  class          String
+  type           String
+  amount         Float
+  dueDate        DateTime
+  academicYearId String?
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
 }
 
 model Payment {
   id                String        @id @default(cuid())
   studentId         String
   student           Student       @relation(fields: [studentId], references: [id])
-  razorpayOrderId   String        @unique
+  razorpayOrderId   String?       @unique
   razorpayPaymentId String?
   amount            Float
   status            PaymentStatus @default(PENDING)
@@ -247,6 +254,8 @@ model SalaryPayment {
   id               String              @id @default(cuid())
   teacherId        String
   teacher          Teacher             @relation(fields: [teacherId], references: [id])
+  academicYearId   String?
+  academicYear     AcademicYear?       @relation(fields: [academicYearId], references: [id])
   month            Int
   year             Int
   baseSalary       Float
@@ -273,4 +282,76 @@ enum SalaryPaymentStatus {
   PROCESSING
   PAID
   FAILED
+}
+
+// ─── ACADEMIC YEAR ───────────────────────────
+
+model AcademicYear {
+  id            String          @id @default(cuid())
+  year          String          @unique // e.g. "2024-25"
+  startDate     DateTime
+  endDate       DateTime
+  isCurrent     Boolean         @default(false)
+  isClosed      Boolean         @default(false)
+  closedAt      DateTime?
+  closedBy      String?
+  createdAt     DateTime        @default(now())
+  students      StudentYear[]
+  feeStructures FeeStructure[]
+  salaryPayments SalaryPayment[]
+}
+
+// Links student to their class in a specific year
+model StudentYear {
+  id             String            @id @default(cuid())
+  studentId      String
+  student        Student           @relation(fields: [studentId], references: [id])
+  academicYearId String
+  academicYear   AcademicYear      @relation(fields: [academicYearId], references: [id])
+  class          String
+  section        String
+  rollNo         String
+  status         StudentYearStatus @default(ACTIVE)
+  promotedAt     DateTime?
+  promotedBy     String?
+  createdAt      DateTime          @default(now())
+  
+  @@unique([studentId, academicYearId])
+}
+
+enum StudentYearStatus {
+  ACTIVE
+  PROMOTED
+  DETAINED
+  TRANSFERRED
+  LEFT
+}
+
+// ─── NOTIFICATIONS ───────────────────────────
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  type       NotificationType
+  title      String
+  body       String
+  link       String?          // where to navigate on click
+  isRead     Boolean          @default(false)
+  readAt     DateTime?
+  metadata   Json?            // extra data (assignmentId, paymentId etc.)
+  createdAt  DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+enum NotificationType {
+  ASSIGNMENT_POSTED
+  FEE_DUE_REMINDER
+  ATTENDANCE_ABSENT
+  RESULT_PUBLISHED
+  SALARY_PROCESSED
+  NOTICE_PUBLISHED
+  YEAR_PROMOTED
+  GENERAL
 }

@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getInitials, getAvatarColor } from "@/lib/formatters"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { NotificationBell } from "./NotificationBell"
 
 export function TeacherSidebar() {
   const pathname = usePathname()
@@ -19,9 +20,11 @@ export function TeacherSidebar() {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    fetch('/api/teacher/dashboard')
+    fetch('/api/teachers/me')
       .then(res => res.json())
-      .then(data => setTeacherData(data))
+      .then(data => {
+         if (!data.error) setTeacherData(data)
+      })
       .catch(console.error)
   }, [])
 
@@ -47,7 +50,7 @@ export function TeacherSidebar() {
 
       <div className="p-4 border-b border-emerald-200 flex items-center gap-3">
         <Avatar className="h-10 w-10 border border-emerald-300">
-          <AvatarImage src={teacherData?.teacher?.photoUrl || (session?.user as any)?.image || ""} />
+          <AvatarImage src={teacherData?.photoUrl || (session?.user as any)?.image || ""} />
           <AvatarFallback className={cn("text-white text-sm font-medium", getAvatarColor(session?.user?.name || "T"))}>
             {getInitials(session?.user?.name || "T")}
           </AvatarFallback>
@@ -60,6 +63,7 @@ export function TeacherSidebar() {
             {session?.user?.email}
           </p>
         </div>
+        <NotificationBell />
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3">

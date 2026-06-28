@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { validateSession } from "@/lib/apiAuth"
 import { CLASS_LIST, SUBJECT_LIST } from "@/lib/constants"
 import { uploadToStorage, validateFile } from "@/lib/assignmentHelpers"
+import { notifyAssignmentPosted } from "@/lib/notificationService"
+import logger from "@/lib/logger"
 import { z } from "zod"
 
 export const config = {
@@ -191,6 +193,17 @@ export async function POST(request: Request) {
 
       return assignment
     })
+
+    // Get all student userIds in that class to notify them
+    const students = await prisma.student.findMany({
+      where: { class: className, user: { isActive: true } },
+      select: { user: { select: { id: true } } }
+    })
+    const studentUserIds = students.map((s) => s.user.id)
+    
+    // Fire and forget — do not await
+    notifyAssignmentPosted(newAssignment, studentUserIds)
+      .catch((e) => logger.error("Notification failed:", e))
 
     return NextResponse.json(newAssignment)
   } catch (error: any) {

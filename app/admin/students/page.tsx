@@ -52,6 +52,8 @@ export default function ManageStudents() {
     address: "",
   })
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoError, setPhotoError] = useState("")
   
   // Credentials Display
   const [credentials, setCredentials] = useState<{email: string, password: string, name: string, rollNo: string, class: string, section: string} | null>(null)
@@ -67,7 +69,12 @@ export default function ManageStudents() {
         
       const res = await fetch(url.toString())
       const data = await res.json()
-      setStudents(data)
+      if (!res.ok || data.error) {
+        setStudents([])
+        toast({ title: "Error", description: data.error || "Failed to fetch students", variant: "destructive" })
+        return
+      }
+      setStudents(Array.isArray(data) ? data : [])
       setCurrentPage(1)
     } catch (e) {
       toast({ title: "Error", description: "Failed to fetch students", variant: "destructive" })
@@ -100,6 +107,8 @@ export default function ManageStudents() {
     setIsEditing(false)
     setFormData({ id: "", name: "", class: "", section: "", dob: "", parentName: "", contact: "", address: "" })
     setPhotoFile(null)
+    setPhotoPreview(null)
+    setPhotoError("")
     setCredentials(null)
     setSuccess(false)
     setIsModalOpen(true)
@@ -118,6 +127,8 @@ export default function ManageStudents() {
       address: student.address,
     })
     setPhotoFile(null)
+    setPhotoPreview(student.photoUrl || null)
+    setPhotoError("")
     setCredentials(null)
     setSuccess(false)
     setIsModalOpen(true)
@@ -137,34 +148,25 @@ export default function ManageStudents() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (photoError) return
+
     setSubmitting(true)
     try {
-      let photoUrl = ""
-      if (photoFile) {
-        if (photoFile.size > 2 * 1024 * 1024) {
-          throw new Error("File size limit exceeded. Max size is 2MB.")
-        }
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(photoFile.type)) {
-          throw new Error("Invalid file type. Only JPEG, PNG, or WEBP formats are allowed.")
-        }
-        
-        const fileExt = photoFile.name.split('.').pop()
-        const fileName = `${Math.random()}.${fileExt}`
-        const { data, error } = await supabase.storage.from('student-photos').upload(`photos/${fileName}`, photoFile)
-        if (error) throw new Error("Failed to upload photo to Supabase")
-        const { data: { publicUrl } } = supabase.storage.from('student-photos').getPublicUrl(`photos/${fileName}`)
-        photoUrl = publicUrl
-      }
+      const payload = new FormData()
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) payload.append(key, value)
+      })
 
-      const payload = { ...formData, photoUrl: photoUrl || undefined }
+      if (photoFile) {
+        payload.append("photo", photoFile)
+      }
       
       const endpoint = isEditing ? `/api/students/${formData.id}` : `/api/students`
       const method = isEditing ? `PUT` : `POST`
 
       const res = await fetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: payload, // Browser automatically sets multipart/form-data boundary
       })
       const result = await res.json()
       
@@ -454,8 +456,45 @@ export default function ManageStudents() {
                   <Input required value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
                 </div>
                 <div className="col-span-2 space-y-2">
-                  <Label>Photo Upload (Optional)</Label>
-                  <Input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} />
+                  <Label>Photo Upload</Label>
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16 border-2 border-slate-100">
+                      <AvatarImage src={photoPreview || ""} className="object-cover" />
+                      <AvatarFallback className="bg-slate-50 text-slate-400">
+                        <Users className="h-6 w-6" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-1">
+                      <Input 
+                        type="file" 
+                        accept="image/jpeg,image/png,image/webp" 
+                        className={photoError ? "border-destructive" : ""}
+                        onChange={e => {
+                          const file = e.target.files?.[0]
+                          setPhotoError("")
+                          if (!file) {
+                            setPhotoFile(null)
+                            setPhotoPreview(null)
+                            return
+                          }
+                          if (file.size > 2 * 1024 * 1024) {
+                            setPhotoError("Image must be under 2MB")
+                            e.target.value = "" // reset
+                            return
+                          }
+                          setPhotoFile(file)
+                          setPhotoPreview(URL.createObjectURL(file))
+                        }} 
+                      />
+                      {photoError ? (
+                        <p className="text-xs text-destructive">{photoError}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Max size: 2MB. Formats: JPG, PNG, WEBP.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               <DialogFooter className="mt-4">

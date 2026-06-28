@@ -5,7 +5,6 @@ const prisma = new PrismaClient()
 
 async function main() {
   const hashedPassword = await bcrypt.hash('Admin@1234', 10)
-  console.log(hashedPassword)
   const teacherPassword = await bcrypt.hash('Teacher@1234', 10)
 
   // Seed Admin

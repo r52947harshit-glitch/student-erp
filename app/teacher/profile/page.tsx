@@ -143,7 +143,7 @@ export default function TeacherProfile() {
                 <img src={teacher.photoUrl} alt="Profile" className="w-36 h-36 rounded-full object-cover border-4 border-emerald-100 shadow-sm transition-transform duration-300 group-hover:scale-105" />
               ) : (
                 <div className="w-36 h-36 rounded-full bg-emerald-50 flex items-center justify-center text-5xl font-bold text-emerald-600 border-4 border-emerald-100 shadow-sm transition-transform duration-300 group-hover:scale-105">
-                  {teacher.user.name.charAt(0)}
+                  {(teacher?.user?.name || "T").charAt(0)}
                 </div>
               )}
               
@@ -171,7 +171,7 @@ export default function TeacherProfile() {
             
             {!photoFile && <span className="text-xs text-muted-foreground mb-4">JPG, PNG or WebP (max 2MB)</span>}
             
-            <h3 className="text-2xl font-bold text-slate-900">{teacher.user.name}</h3>
+            <h3 className="text-2xl font-bold text-slate-900">{teacher?.user?.name ?? "—"}</h3>
             <div className="mt-1 flex items-center gap-1.5 justify-center">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <p className="text-sm font-medium text-emerald-700">{teacher.employeeId}</p>
@@ -180,7 +180,7 @@ export default function TeacherProfile() {
             <div className="w-full space-y-3 text-sm text-left border-t border-slate-100 mt-6 pt-6">
               <div className="flex items-center gap-3 text-slate-600">
                 <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="truncate">{teacher.user.email}</span>
+                <span className="truncate">{teacher?.user?.email ?? "—"}</span>
               </div>
               <div className="flex items-center gap-3 text-slate-600">
                 <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -271,13 +271,13 @@ export default function TeacherProfile() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  {teacher.assignedClasses.length === 0 ? (
+                  {(teacher?.assignedClasses ?? []).length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
                       <p>No classes assigned yet.</p>
                     </div>
                   ) : (
                     <div className="grid sm:grid-cols-2 gap-4">
-                      {teacher.assignedClasses.map((ac: any) => (
+                      {(teacher?.assignedClasses ?? []).map((ac: any) => (
                         <div key={ac.id} className="p-4 bg-white border border-emerald-100 rounded-lg shadow-sm">
                           <div className="font-bold text-lg text-emerald-900 mb-2">Class {ac.className}</div>
                           <div className="flex flex-wrap gap-1.5">

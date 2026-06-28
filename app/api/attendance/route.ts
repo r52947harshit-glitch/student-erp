@@ -4,6 +4,8 @@ import { validateSession } from "@/lib/apiAuth"
 import { attendanceSchema } from "@/lib/validations"
 import { handlePrismaError } from "@/lib/prisma-error"
 import { startOfDay, endOfDay } from "date-fns"
+import { notifyAttendanceAbsent } from "@/lib/notificationService"
+import logger from "@/lib/logger"
 
 export async function GET(request: Request) {
   const { errorResponse, session } = await validateSession(["TEACHER", "ADMIN"])
@@ -103,6 +105,19 @@ export async function POST(request: Request) {
         })
       )
     )
+
+    // Only notify students marked ABSENT
+    const absentRecords = attendanceList.filter((r: any) => r.status === "ABSENT")
+    for (const record of absentRecords) {
+      const student = await prisma.student.findUnique({
+        where: { id: record.studentId },
+        select: { userId: true, class: true }
+      })
+      if (student) {
+        notifyAttendanceAbsent(student.userId, payloadDate, student.class)
+          .catch((e) => logger.error("Notification failed:", e))
+      }
+    }
 
     return NextResponse.json({ success: true, count: results.length })
   } catch (error) {

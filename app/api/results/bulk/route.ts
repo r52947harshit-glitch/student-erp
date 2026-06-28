@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { validateSession } from "@/lib/apiAuth"
 import { resultBulkSchema } from "@/lib/validations"
 import { handlePrismaError } from "@/lib/prisma-error"
+import { notifyResultPublished } from "@/lib/notificationService"
+import logger from "@/lib/logger"
 
 export async function POST(request: Request) {
   const { errorResponse, session } = await validateSession(["TEACHER", "ADMIN"])
@@ -91,6 +93,24 @@ export async function POST(request: Request) {
       }
 
     })
+
+    if (createdCount > 0 || updatedCount > 0) {
+      // Get unique student IDs from payload
+      const uniqueStudentIds = Array.from(new Set(payload.map((r: any) => r.studentId)))
+      
+      const students = await prisma.student.findMany({
+        where: { id: { in: uniqueStudentIds }, user: { isActive: true } },
+        select: { userId: true, class: true }
+      })
+      
+      const studentUserIds = students.map(s => s.userId)
+      // They all share the same examType and class based on standard usage
+      const examType = payload[0].examType
+      const className = students[0]?.class || ""
+
+      notifyResultPublished(studentUserIds, examType, className)
+        .catch((e) => logger.error("Notification failed:", e))
+    }
 
     return NextResponse.json({ success: true, createdCount, updatedCount })
   } catch (error) {

@@ -41,7 +41,7 @@ export async function POST(request: Request) {
           amount: parseFloat(amount),
           status: "PAID",
           verifiedAt: new Date(),
-          razorpayOrderId: `MANUAL_${Date.now()}` // generate dummy unique ID
+          razorpayOrderId: null
         }
       })
       

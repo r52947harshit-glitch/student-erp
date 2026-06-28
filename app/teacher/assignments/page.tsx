@@ -48,6 +48,9 @@ export default function TeacherAssignments() {
   // Tab 2 States
   const [allSubmissions, setAllSubmissions] = useState<any[]>([])
 
+  const [activeTab, setActiveTab] = useState("my_assignments")
+  const [submissionsLoading, setSubmissionsLoading] = useState(false)
+
   useEffect(() => {
     fetch("/api/teacher/dashboard")
       .then(res => res.json())
@@ -62,19 +65,11 @@ export default function TeacherAssignments() {
     try {
       const res = await fetch(`/api/assignments?limit=100`)
       const data = await res.json()
-      setAssignments(data.assignments || [])
+      const loadedAssignments = data.assignments || []
+      setAssignments(loadedAssignments)
       
-      // Load all submissions for Tab 2
-      if (data.assignments?.length > 0) {
-        const allSubs: any[] = []
-        for (const a of data.assignments) {
-          const sRes = await fetch(`/api/assignments/${a.id}/submissions`)
-          const sData = await sRes.json()
-          if (sData.submissions) {
-             sData.submissions.forEach((sub: any) => allSubs.push({ ...sub, assignment: a }))
-          }
-        }
-        setAllSubmissions(allSubs.sort((x, y) => new Date(y.submittedAt).getTime() - new Date(x.submittedAt).getTime()))
+      if (activeTab === "submissions" && loadedAssignments.length > 0) {
+        loadAllSubmissions(loadedAssignments)
       }
     } catch (e) {
       toast({ title: "Error", description: "Failed to load assignments", variant: "destructive" })
@@ -82,6 +77,42 @@ export default function TeacherAssignments() {
       setLoading(false)
     }
   }
+
+  const loadAllSubmissions = async (assignmentsList = assignments) => {
+    if (assignmentsList.length === 0) return
+    setSubmissionsLoading(true)
+    try {
+      const allSubs: any[] = []
+      await Promise.all(
+        assignmentsList.map(async (a: any) => {
+          try {
+            const sRes = await fetch(`/api/assignments/${a.id}/submissions`)
+            const sData = await sRes.json()
+            if (sData.submissions) {
+              sData.submissions.forEach((sub: any) => {
+                allSubs.push({ ...sub, assignment: a })
+              })
+            }
+          } catch (e) {
+            console.error(`Failed to fetch submissions for assignment ${a.id}`, e)
+          }
+        })
+      )
+      setAllSubmissions(
+        allSubs.sort((x, y) => new Date(y.submittedAt).getTime() - new Date(x.submittedAt).getTime())
+      )
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to load student submissions", variant: "destructive" })
+    } finally {
+      setSubmissionsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "submissions") {
+      loadAllSubmissions()
+    }
+  }, [activeTab])
 
   const handlePostAssignment = async () => {
     if (!addForm.title || !addForm.className || !addForm.subject || !addForm.dueDate) {
@@ -189,7 +220,7 @@ export default function TeacherAssignments() {
         }
       />
 
-      <Tabs defaultValue="my_assignments" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full sm:w-auto grid-cols-2 mb-6 p-1 bg-emerald-50 text-emerald-800 border border-emerald-100 rounded-lg">
           <TabsTrigger value="my_assignments" className="data-[state=active]:bg-white data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm rounded-md transition-all">My Assignments</TabsTrigger>
           <TabsTrigger value="submissions" className="data-[state=active]:bg-white data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm rounded-md transition-all">Student Submissions</TabsTrigger>
@@ -310,41 +341,54 @@ export default function TeacherAssignments() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {allSubmissions.filter(s => s.status !== "PENDING_FAKE").map(sub => (
-                      <tr key={sub.id} className="hover:bg-slate-50/60 cursor-pointer transition-colors" onClick={() => openSubmissions(sub.assignment)}>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-900">{sub.student.user.name}</span>
-                            <span className="text-xs text-slate-500 mt-0.5">Roll {sub.student.rollNo}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col max-w-[250px]">
-                            <span className="font-medium text-slate-900 truncate" title={sub.assignment.title}>{sub.assignment.title}</span>
-                            <span className="text-xs text-slate-500 mt-0.5">Class {sub.assignment.className} • {sub.assignment.subject}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1.5 text-slate-600">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            {format(new Date(sub.submittedAt), 'PPp')}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <DataBadge status={sub.status} />
-                        </td>
-                      </tr>
-                    ))}
-                    {allSubmissions.length === 0 && (
+                    {submissionsLoading ? (
                       <tr>
                         <td colSpan={4} className="text-center p-12">
-                          <EmptyState 
-                            icon={CheckCircle2}
-                            title="No submissions yet"
-                            description="Students have not submitted any assignments yet."
-                          />
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <LoadingSpinner />
+                            <span className="text-sm text-slate-500 font-medium">Loading student submissions...</span>
+                          </div>
                         </td>
                       </tr>
+                    ) : (
+                      <>
+                        {allSubmissions.filter(s => s.status !== "PENDING_FAKE").map(sub => (
+                          <tr key={sub.id} className="hover:bg-slate-50/60 cursor-pointer transition-colors" onClick={() => openSubmissions(sub.assignment)}>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-slate-900">{sub.student.user.name}</span>
+                                <span className="text-xs text-slate-500 mt-0.5">Roll {sub.student.rollNo}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col max-w-[250px]">
+                                <span className="font-medium text-slate-900 truncate" title={sub.assignment.title}>{sub.assignment.title}</span>
+                                <span className="text-xs text-slate-500 mt-0.5">Class {sub.assignment.className} • {sub.assignment.subject}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                {format(new Date(sub.submittedAt), 'PPp')}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <DataBadge status={sub.status} />
+                            </td>
+                          </tr>
+                        ))}
+                        {allSubmissions.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="text-center p-12">
+                              <EmptyState 
+                                icon={CheckCircle2}
+                                title="No submissions yet"
+                                description="Students have not submitted any assignments yet."
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     )}
                   </tbody>
                 </table>

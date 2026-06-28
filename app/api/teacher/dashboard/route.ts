@@ -21,32 +21,28 @@ export async function GET() {
     const todayStart = startOfDay(new Date())
     const todayEnd = endOfDay(new Date())
 
-    const attendanceStatus = await Promise.all(
-      assignedClasses.map(async (ac) => {
-        const markedRecord = await prisma.attendance.findFirst({
-          where: {
-            date: { gte: todayStart, lte: todayEnd },
-            student: { class: ac.className }
+    const [attendanceStatus, pendingReviews] = await Promise.all([
+      Promise.all(
+        assignedClasses.map(async (ac) => {
+          const markedRecord = await prisma.attendance.findFirst({
+            where: {
+              date: { gte: todayStart, lte: todayEnd },
+              student: { class: ac.className }
+            }
+          })
+          return {
+            class: ac.className,
+            isMarked: !!markedRecord
           }
         })
-        return {
-          class: ac.className,
-          isMarked: !!markedRecord
+      ),
+      prisma.assignmentSubmission.count({
+        where: {
+          status: "SUBMITTED",
+          assignment: { teacherId: teacher.id }
         }
       })
-    )
-
-    // Check for pending results: simple count of students without results?
-    // An approximation is getting counts of total results entered by this teacher.
-    // For simplicity of MVP metric, we just pass down standard analytics payload.
-
-    // Check for pending reviews
-    const pendingReviews = await prisma.assignmentSubmission.count({
-      where: {
-        status: "SUBMITTED",
-        assignment: { teacherId: teacher.id }
-      }
-    })
+    ])
 
     return NextResponse.json({
       teacher,

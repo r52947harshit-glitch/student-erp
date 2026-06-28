@@ -1,7 +1,10 @@
 import Razorpay from 'razorpay'
 
-// Initialize Razorpay with test keys (replace with production keys in production)
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  throw new Error("Razorpay credentials (RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET) missing from environment variables.")
+}
+
 export const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_SdlHVeBzU3Jp0I",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "3umfMf725z5OOInWurShzmWh",
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
 }) 

@@ -56,39 +56,83 @@ export async function POST(request: Request) {
     return errorResponse || NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const body = await request.json();
-    const parseResult = addTeacherSchema.safeParse(body);
+    const formData = await request.formData()
 
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: parseResult.error.issues[0].message },
-        { status: 400 }
-      );
+    const name          = formData.get("name") as string
+    const email         = formData.get("email") as string
+    const phone         = formData.get("phone") as string
+    const address       = formData.get("address") as string
+    const qualification = formData.get("qualification") as string
+    const joiningDate   = formData.get("joiningDate") as string
+    const photo         = formData.get("photo") as File | null
+
+    const assignedClassesRaw = formData.get("assignedClasses") as string
+    let assignedClasses: { className: string; subjects: string[] }[] = []
+    try {
+      assignedClasses = JSON.parse(assignedClassesRaw || "[]")
+    } catch {
+      return NextResponse.json({ error: "Invalid assigned classes format." }, { status: 400 })
     }
 
-    const data = parseResult.data;
+    if (!name || !email || !phone || !address || !qualification || !joiningDate) {
+      return NextResponse.json({ error: "All fields are required." }, { status: 400 })
+    }
 
-    // Check if email is used
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      return NextResponse.json({ error: "Enter a valid 10-digit Indian mobile number." }, { status: 400 })
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Invalid email address." }, { status: 400 })
+    }
+
+    if (!assignedClasses.length) {
+      return NextResponse.json({ error: "Assign at least one class to the teacher." }, { status: 400 })
+    }
+
+    for (const ac of assignedClasses) {
+      if (!ac.subjects?.length) {
+        return NextResponse.json({ error: `Select at least one subject for ${ac.className}.` }, { status: 400 })
+      }
+    }
+
     const existingUser = await prisma.user.findUnique({
-      where: { email: data.email },
-    });
+      where: { email: email.toLowerCase().trim() },
+      select: { id: true },
+    })
     if (existingUser) {
-      return NextResponse.json({ error: "Email is already in use" }, { status: 400 });
+      return NextResponse.json({ error: "A user with this email already exists." }, { status: 409 })
     }
 
-    // Generate employeeId
     const currentYear = new Date().getFullYear();
     const teacherCount = await prisma.teacher.count();
     const sequence = (teacherCount + 1).toString().padStart(3, "0");
     const employeeId = `TCH-${currentYear}-${sequence}`;
 
-    const hashedPassword = await bcrypt.hash(data.phone, 10);
+    const hashedPassword = await bcrypt.hash(phone.trim(), 10);
+
+    let photoUrl: string | null = null
+    if (photo && photo.size > 0) {
+      const { uploadPhoto } = await import("@/lib/uploadHelper")
+      const result = await uploadPhoto(
+        photo,
+        "teacher-photos",
+        "teachers",
+        employeeId.replace(/[^a-zA-Z0-9]/g, "-")
+      )
+
+      if (!result.success) {
+        return NextResponse.json({ error: result.error || "Photo upload failed." }, { status: 400 })
+      }
+
+      photoUrl = result.photoUrl || null
+    }
 
     const teacher = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
         data: {
-          email: data.email,
-          name: data.name,
+          email: email.toLowerCase().trim(),
+          name: name.trim(),
           password: hashedPassword,
           role: "TEACHER",
           isActive: true,
@@ -99,12 +143,13 @@ export async function POST(request: Request) {
         data: {
           userId: newUser.id,
           employeeId,
-          phone: data.phone,
-          address: data.address,
-          qualification: data.qualification,
-          joiningDate: new Date(data.joiningDate),
+          phone: phone.trim(),
+          address: address.trim(),
+          qualification: qualification.trim(),
+          joiningDate: new Date(joiningDate),
+          photoUrl,
           assignedClasses: {
-            create: data.assignedClasses.map((ac) => ({
+            create: assignedClasses.map((ac) => ({
               className: ac.className,
               subjects: ac.subjects,
             })),
@@ -129,7 +174,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { teacher, credentials: { email: data.email, tempPassword: data.phone } },
+      { teacher, credentials: { email: email.toLowerCase().trim(), tempPassword: phone.trim() } },
       { status: 201 }
     );
   } catch (error: any) {
