@@ -101,18 +101,28 @@ export function SalarySetupTab() {
                     {t.salaryConfig?.razorpayFundAccountId ? (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">✅ Ready</span>
                     ) : t.salaryConfig ? (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">⚠️ Setup Pending</span>
+                      <div>
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">⚠️ Setup Pending</span>
+                        {t.salaryConfig && !t.salaryConfig.razorpayFundAccountId && (
+                          <div className="mt-1">
+                            <button
+                              onClick={() => openConfigModal(t)}
+                              className="text-xs text-amber-600 hover:text-amber-700 underline font-medium text-left"
+                            >
+                              ⚠️ Razorpay not registered — click to retry
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">❌ Not Configured</span>
                     )}
                   </td>
                   <td className="p-3">
-                    </td>
-                    <td className="p-3">
-                      <Button size="sm" variant="outline" onClick={() => openConfigModal(t)}>
-                        {t.salaryConfig ? "Edit" : "Configure"}
-                      </Button>
-                    </td>
+                    <Button size="sm" variant="outline" onClick={() => openConfigModal(t)}>
+                      {t.salaryConfig ? "Edit" : "Configure"}
+                    </Button>
+                  </td>
                   </tr>
                 ))}
               </tbody>
@@ -182,11 +192,23 @@ function ConfigureModal({ open, onClose, teacher, onSaved }: {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      if (data.warning) {
-        toast({ title: "Warning", description: data.warning, variant: "destructive" })
-      } else {
-        toast({ title: "Success", description: "Salary configured and Razorpay registered ✅" })
+
+      if (data.data?.warning) {
+        // Show warning as a detailed alert, not just toast
+        toast({
+          title: "Config Saved — Action Required",
+          description: data.data.warning,
+          variant: "destructive",
+          duration: 10000, // show for 10 seconds
+        })
+      } else if (data.data?.razorpayRegistered) {
+        toast({
+          title: "✅ Salary configured successfully",
+          description: "Bank details saved and registered with Razorpay X.",
+          duration: 5000,
+        })
       }
+
       onSaved()
       onClose()
     } catch (e: any) {

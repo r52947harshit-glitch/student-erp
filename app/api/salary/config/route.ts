@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { validateSession } from "@/lib/apiAuth"
 import { z } from "zod"
 import { createRazorpayContact, createFundAccount } from "@/lib/razorpayPayout"
+import { ApiResponse } from "@/lib/apiResponse"
+import logger from "@/lib/logger"
 
 function maskAccountNumber(acc: string): string {
   if (acc.length <= 4) return acc
@@ -108,33 +110,68 @@ export async function POST(request: Request) {
 
     // Try Razorpay registration
     let razorpayWarning: string | null = null
-    try {
-      const contact = await createRazorpayContact({
-        name: teacher.user.name,
-        email: teacher.user.email,
-        phone: teacher.phone,
-        employeeId: teacher.employeeId,
-      })
+    let razorpaySuccess = false
 
-      const fundAccount = await createFundAccount({
-        contactId: contact.id,
-        accountHolderName: data.accountHolderName,
-        accountNumber: data.bankAccountNumber,
-        ifscCode: data.ifscCode,
-      })
+    // Only attempt Razorpay if payout keys exist
+    const payoutKeyId = process.env.RAZORPAY_PAYOUT_KEY_ID
+    const payoutKeySecret = process.env.RAZORPAY_PAYOUT_KEY_SECRET
+    const payoutAccountNumber = process.env.RAZORPAY_X_ACCOUNT_NUMBER
 
-      await prisma.teacherSalaryConfig.update({
-        where: { id: config.id },
-        data: {
-          razorpayContactId: contact.id,
-          razorpayFundAccountId: fundAccount.id,
-        },
-      })
-    } catch (rpError: any) {
-      razorpayWarning =
-        "Salary config saved but Razorpay registration failed: " +
-        (rpError.message || "Unknown error") +
-        ". You can retry from the salary page."
+    if (!payoutKeyId || !payoutKeySecret || !payoutAccountNumber) {
+      razorpayWarning = "Razorpay X Payout keys not configured in environment. " +
+        "Add RAZORPAY_PAYOUT_KEY_ID, RAZORPAY_PAYOUT_KEY_SECRET, and " +
+        "RAZORPAY_X_ACCOUNT_NUMBER to your .env.local file."
+    } else {
+      try {
+        const contact = await createRazorpayContact({
+          name: teacher.user.name,
+          email: teacher.user.email,
+          phone: teacher.phone,
+          employeeId: teacher.employeeId,
+        })
+
+        const fundAccount = await createFundAccount({
+          contactId: contact.id,
+          accountHolderName: data.accountHolderName,
+          accountNumber: data.bankAccountNumber,
+          ifscCode: data.ifscCode,
+        })
+
+        await prisma.teacherSalaryConfig.update({
+          where: { id: config.id },
+          data: {
+            razorpayContactId: contact.id,
+            razorpayFundAccountId: fundAccount.id,
+          },
+        })
+
+        razorpaySuccess = true
+      } catch (rpError: any) {
+        const errMsg = rpError?.message || "Unknown error"
+
+        // Provide specific error guidance
+        if (errMsg.toLowerCase().includes("authentication")) {
+          razorpayWarning = "Razorpay X authentication failed. " +
+            "Your RAZORPAY_PAYOUT_KEY_ID or RAZORPAY_PAYOUT_KEY_SECRET " +
+            "in .env.local are incorrect. Get Payout API keys from: " +
+            "Razorpay X Dashboard → Settings → API Keys."
+        } else if (errMsg.toLowerCase().includes("account")) {
+          razorpayWarning = "Razorpay X account number error. " +
+            "Verify RAZORPAY_X_ACCOUNT_NUMBER in .env.local matches " +
+            "your Razorpay X current account number exactly."
+        } else if (errMsg.toLowerCase().includes("ifsc")) {
+          razorpayWarning = `Invalid IFSC code: ${data.ifscCode}. ` +
+            "Please verify the IFSC code and try again."
+        } else if (errMsg.toLowerCase().includes("contact")) {
+          razorpayWarning = "Failed to create Razorpay contact. " +
+            "Check that teacher email and phone are valid."
+        } else {
+          razorpayWarning = `Razorpay registration failed: ${errMsg}. ` +
+            "Salary config is saved. You can retry from the salary page."
+        }
+
+        logger.error("Razorpay registration error:", rpError)
+      }
     }
 
     await prisma.auditLog.create({
@@ -142,12 +179,13 @@ export async function POST(request: Request) {
         action: "SALARY_CONFIG_UPDATED",
         performedBy: session.user.id,
         targetId: data.teacherId,
-        note: `Salary config set for ${teacher.employeeId}: ₹${data.baseSalary}/month`,
+        note: `Salary config set for ${teacher.employeeId}. ` +
+          `Razorpay: ${razorpaySuccess ? "registered" : "failed"}`,
       },
     })
 
-    return NextResponse.json({
-      success: true,
+    return ApiResponse.success({
+      razorpayRegistered: razorpaySuccess,
       warning: razorpayWarning,
     })
   } catch (error) {

@@ -80,28 +80,38 @@ export async function PATCH(
     let razorpayWarning: string | null = null
     const bankChanged = body.bankAccountNumber || body.ifscCode || body.accountHolderName
     if (bankChanged) {
-      try {
-        const contact = await createRazorpayContact({
-          name: teacher.user.name,
-          email: teacher.user.email,
-          phone: teacher.phone,
-          employeeId: teacher.employeeId,
-        })
-        const fundAccount = await createFundAccount({
-          contactId: contact.id,
-          accountHolderName: updated.accountHolderName,
-          accountNumber: updated.bankAccountNumber,
-          ifscCode: updated.ifscCode,
-        })
-        await prisma.teacherSalaryConfig.update({
-          where: { teacherId },
-          data: {
-            razorpayContactId: contact.id,
-            razorpayFundAccountId: fundAccount.id,
-          },
-        })
-      } catch (rpError: any) {
-        razorpayWarning = "Config updated but Razorpay re-registration failed: " + rpError.message
+      const payoutKeyId = process.env.RAZORPAY_PAYOUT_KEY_ID
+      const payoutKeySecret = process.env.RAZORPAY_PAYOUT_KEY_SECRET
+      const payoutAccountNumber = process.env.RAZORPAY_X_ACCOUNT_NUMBER
+
+      if (!payoutKeyId || !payoutKeySecret || !payoutAccountNumber) {
+        razorpayWarning = "Razorpay X Payout keys not configured in environment. " +
+          "Add RAZORPAY_PAYOUT_KEY_ID, RAZORPAY_PAYOUT_KEY_SECRET, and " +
+          "RAZORPAY_X_ACCOUNT_NUMBER to your .env.local file."
+      } else {
+        try {
+          const contact = await createRazorpayContact({
+            name: teacher.user.name,
+            email: teacher.user.email,
+            phone: teacher.phone,
+            employeeId: teacher.employeeId,
+          })
+          const fundAccount = await createFundAccount({
+            contactId: contact.id,
+            accountHolderName: updated.accountHolderName,
+            accountNumber: updated.bankAccountNumber,
+            ifscCode: updated.ifscCode,
+          })
+          await prisma.teacherSalaryConfig.update({
+            where: { teacherId },
+            data: {
+              razorpayContactId: contact.id,
+              razorpayFundAccountId: fundAccount.id,
+            },
+          })
+        } catch (rpError: any) {
+          razorpayWarning = "Config updated but Razorpay re-registration failed: " + rpError.message
+        }
       }
     }
 

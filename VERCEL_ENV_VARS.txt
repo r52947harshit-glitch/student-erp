@@ -1,42 +1,48 @@
 # PRODUCTION ENVIRONMENT VARIABLES FOR VERCEL
-# Copy these to your Vercel Project Settings → Environment Variables
+# Copy these to Vercel Project Settings -> Environment Variables.
+# Do not commit real secrets to this file.
 
 # ============================================
 # DATABASE CONFIGURATION (Required)
 # ============================================
-DATABASE_URL="postgresql://postgres.hiivbgekplordkqyhkwf:kksI9Vs33rn35Tly@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres.hiivbgekplordkqyhkwf:kksI9Vs33rn35Tly@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:6543/postgres?pgbouncer=true"
+# Optional unless Prisma directUrl is enabled in prisma/schema.prisma
+DIRECT_URL="postgresql://USER:PASSWORD@HOST:5432/postgres"
 
 # ============================================
 # AUTHENTICATION (Required)
 # ============================================
-NEXTAUTH_SECRET="mjfvZZpQ9/Oa20MZwlOvXRuJQXey/xqf3Hd800+zwVI="
+NEXTAUTH_SECRET="generate-a-new-secret-with-openssl-rand-base64-32"
 # IMPORTANT: Update NEXTAUTH_URL after deployment with your actual Vercel URL
 NEXTAUTH_URL="https://YOUR-PROJECT.vercel.app"
 
 # ============================================
 # SUPABASE STORAGE (Required)
 # ============================================
-NEXT_PUBLIC_SUPABASE_URL="https://hiivbgekplordkqyhkwf.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpaXZiZ2VrcGxvcmRrcXloa3dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjQxOTgsImV4cCI6MjA5MTI0MDE5OH0.2rhsui6qw0Ppi4fwQ8MgC6QsUqsfdsX0kiMQPwIHSPM"
-SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpaXZiZ2VrcGxvcmRrcXloa3dmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTY2NDE5OCwiZXhwIjoyMDkxMjQwMTk4fQ.9HsfJ2e1rkYHqolf2zXwYMLduQgP7BPytpZQQUefGNQ"
+NEXT_PUBLIC_SUPABASE_URL="https://YOUR-PROJECT.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 
 # ============================================
 # RAZORPAY PAYMENTS (Required for Fee Portal)
 # ============================================
-RAZORPAY_KEY_ID="rzp_test_SdlHVeBzU3Jp0I"
-RAZORPAY_KEY_SECRET="3umfMf725z5OOInWurShzmWh"
-RAZORPAY_WEBHOOK_SECRET=""
-NEXT_PUBLIC_RAZORPAY_KEY_ID="rzp_test_SdlHVeBzU3Jp0I"
+RAZORPAY_KEY_ID="rzp_live_or_test_key_id"
+RAZORPAY_KEY_SECRET="your_razorpay_key_secret"
+RAZORPAY_WEBHOOK_SECRET="your_razorpay_webhook_secret"
 
 # ============================================
-# NOTES:
+# RAZORPAY X PAYOUTS (Required for Salary Payout Portal)
 # ============================================
-# 1. NEXTAUTH_URL: Replace YOUR-PROJECT with your actual Vercel project name
-# 2. For production, generate a new NEXTAUTH_SECRET:
-#    Run: openssl rand -base64 32
-# 3. For production payments, get Razorpay production keys from:
-#    https://dashboard.razorpay.com/app/keys
-# 4. Set up Razorpay webhook after deployment:
-#    URL: https://YOUR-PROJECT.vercel.app/api/payments/webhook
-# 5. All variables should be set for: Production, Preview, and Development
+RAZORPAY_PAYOUT_KEY_ID="rzp_live_or_test_payout_key_id"
+RAZORPAY_PAYOUT_KEY_SECRET="your_razorpay_payout_key_secret"
+RAZORPAY_X_ACCOUNT_NUMBER="your_razorpay_x_account_number"
+
+# ============================================
+# NOTES
+# ============================================
+# 1. Generate NEXTAUTH_SECRET with: openssl rand -base64 32
+# 2. Use live Razorpay keys for production payments and payouts.
+# 3. Set up Razorpay webhook after deployment:
+#    https://YOUR-PROJECT.vercel.app/api/payments/webhook
+# 4. Set required variables for Production, Preview, and Development.
+# 5. NEXT_PUBLIC_RAZORPAY_KEY_ID is not used by the current codebase.

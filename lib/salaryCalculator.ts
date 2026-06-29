@@ -17,12 +17,28 @@ export function calculateSalary(
   month: number,
   year: number
 ): SalaryBreakdown {
-  // Count total working days (exclude Sundays)
+  // Count total working days (exclude Sundays only)
   const daysInMonth = new Date(year, month, 0).getDate()
   let totalWorkingDays = 0
   for (let d = 1; d <= daysInMonth; d++) {
     const day = new Date(year, month - 1, d).getDay()
-    if (day !== 0) totalWorkingDays++
+    if (day !== 0) totalWorkingDays++ // 0 = Sunday
+  }
+
+  // Guard against division by zero
+  if (totalWorkingDays === 0) {
+    return {
+      baseSalary,
+      totalWorkingDays: 0,
+      presentDays: 0,
+      halfDays: 0,
+      paidLeaveDays: 0,
+      unpaidLeaveDays: 0,
+      absentDays: 0,
+      effectivePresentDays: 0,
+      deductionAmount: 0,
+      netSalary: 0,
+    }
   }
 
   let presentDays = 0
@@ -33,29 +49,48 @@ export function calculateSalary(
 
   for (const record of attendance) {
     switch (record.status) {
-      case "PRESENT":
-        presentDays++
-        break
-      case "HALF_DAY":
-        halfDays++
-        break
-      case "PAID_LEAVE":
-        paidLeaveDays++
-        break
-      case "UNPAID_LEAVE":
-        unpaidLeaveDays++
-        break
-      case "ABSENT":
-        absentDays++
-        break
+      case "PRESENT":     presentDays++;     break
+      case "HALF_DAY":    halfDays++;        break
+      case "PAID_LEAVE":  paidLeaveDays++;   break
+      case "UNPAID_LEAVE": unpaidLeaveDays++; break
+      case "ABSENT":      absentDays++;      break
     }
   }
 
-  const effectivePresentDays = presentDays + halfDays * 0.5 + paidLeaveDays
+  // Days accounted for in attendance records
+  const markedDays = presentDays + halfDays + paidLeaveDays +
+    unpaidLeaveDays + absentDays
+
+  // Days with NO attendance record = treat as absent
+  // This prevents getting full salary with zero attendance marked
+  const unmarkedDays = Math.max(0, totalWorkingDays - markedDays)
+  const effectiveAbsentDays = absentDays + unmarkedDays
+
   const perDaySalary = baseSalary / totalWorkingDays
-  const unpaidDays = unpaidLeaveDays + absentDays + halfDays * 0.5
-  const deductionAmount = parseFloat((perDaySalary * unpaidDays).toFixed(2))
-  const netSalary = parseFloat((baseSalary - deductionAmount).toFixed(2))
+
+  // Deductible days:
+  // - Absent (including unmarked days)
+  // - Unpaid leave
+  // - Half days count as 0.5 deduction
+  const deductibleDays =
+    effectiveAbsentDays +
+    unpaidLeaveDays +
+    (halfDays * 0.5)
+
+  // Effective days worked (for reference)
+  const effectivePresentDays =
+    presentDays +
+    paidLeaveDays +
+    (halfDays * 0.5)
+
+  const deductionAmount = parseFloat(
+    (perDaySalary * deductibleDays).toFixed(2)
+  )
+
+  // Net salary cannot go below 0
+  const netSalary = parseFloat(
+    Math.max(0, baseSalary - deductionAmount).toFixed(2)
+  )
 
   return {
     baseSalary,
@@ -64,7 +99,7 @@ export function calculateSalary(
     halfDays,
     paidLeaveDays,
     unpaidLeaveDays,
-    absentDays,
+    absentDays: effectiveAbsentDays, // includes unmarked
     effectivePresentDays,
     deductionAmount,
     netSalary,

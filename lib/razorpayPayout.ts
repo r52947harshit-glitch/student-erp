@@ -1,8 +1,17 @@
 const RAZORPAY_PAYOUT_BASE = "https://api.razorpay.com/v1"
 
 function getAuthHeader(): string {
-  const key = process.env.RAZORPAY_PAYOUT_KEY_ID!
-  const secret = process.env.RAZORPAY_PAYOUT_KEY_SECRET!
+  const key = process.env.RAZORPAY_PAYOUT_KEY_ID
+  const secret = process.env.RAZORPAY_PAYOUT_KEY_SECRET
+
+  if (!key || !secret) {
+    throw new Error(
+      "Razorpay Payout keys missing. Add RAZORPAY_PAYOUT_KEY_ID " +
+      "and RAZORPAY_PAYOUT_KEY_SECRET to your .env.local file. " +
+      "Get these from Razorpay X Dashboard → Settings → API Keys."
+    )
+  }
+
   return "Basic " + Buffer.from(`${key}:${secret}`).toString("base64")
 }
 
@@ -75,8 +84,16 @@ export async function createSalaryPayout(data: {
   year: number
   paymentId: string
 }) {
+  const accountNumber = process.env.RAZORPAY_X_ACCOUNT_NUMBER
+  if (!accountNumber) {
+    throw new Error(
+      "RAZORPAY_X_ACCOUNT_NUMBER missing from .env.local. " +
+      "Find your account number in Razorpay X → Account Details."
+    )
+  }
+
   return razorpayPayoutRequest("/payouts", "POST", {
-    account_number: process.env.RAZORPAY_X_ACCOUNT_NUMBER,
+    account_number: accountNumber,
     fund_account_id: data.fundAccountId,
     amount: data.amountInPaise,
     currency: "INR",
