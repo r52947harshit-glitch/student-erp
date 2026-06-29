@@ -38,9 +38,12 @@ export default function LoginPage() {
     if (res?.error) {
       setErrorMsg(res.error)
     } else {
-      if (role === "ADMIN") router.push("/admin/dashboard")
-      else if (role === "TEACHER") router.push("/teacher/dashboard")
-      else router.push("/student/dashboard")
+      const targetPath = role === "ADMIN"
+        ? "/admin/dashboard"
+        : role === "TEACHER"
+        ? "/teacher/dashboard"
+        : "/student/dashboard"
+      window.location.href = targetPath
     }
   }
 
