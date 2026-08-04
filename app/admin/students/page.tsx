@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
-import { Search, Download, Plus, UserX, MoreHorizontal, Pencil, Users, Copy, Printer, CheckCircle } from "lucide-react"
+import { Search, Download, Plus, UserX, MoreHorizontal, Pencil, Users, Copy, Printer, CheckCircle, Loader2 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { DataBadge } from "@/components/shared/DataBadge"
@@ -57,6 +57,47 @@ export default function ManageStudents() {
   
   // Credentials Display
   const [credentials, setCredentials] = useState<{email: string, password: string, name: string, rollNo: string, class: string, section: string} | null>(null)
+
+  const [hasOldIds, setHasOldIds] = useState(false)
+  const [fixing, setFixing] = useState(false)
+
+  // Check on load if any students need fixing
+  useEffect(() => {
+    fetch("/api/students?checkIds=true")
+      .then(res => res.json())
+      .then(data => {
+        if (data.data?.hasOldAdmissionNumbers) {
+          setHasOldIds(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleFixIds = async () => {
+    setFixing(true)
+    try {
+      const res = await fetch("/api/admin/fix-admission-numbers", {
+        method: "POST",
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast({
+          title: "Fixed!",
+          description: data.data?.message || "Admission numbers updated.",
+        })
+        setHasOldIds(false)
+        fetchStudents()
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to fix IDs.",
+        variant: "destructive",
+      })
+    } finally {
+      setFixing(false)
+    }
+  }
 
   const { toast } = useToast()
 
@@ -176,12 +217,14 @@ export default function ManageStudents() {
       toast({ title: "Success", description: isEditing ? "Student updated" : "Student created." })
       
       setTimeout(() => {
-        if (!isEditing && result.user?.email) {
+        const userEmail = result.user?.email || result.data?.user?.email
+        const userRoll = result.student?.rollNo || result.data?.student?.rollNo || "Pending"
+        if (!isEditing && userEmail) {
           setCredentials({ 
-            email: result.user.email, 
+            email: userEmail, 
             password: formData.contact,
             name: formData.name,
-            rollNo: result.student?.rollNo || "Pending",
+            rollNo: userRoll,
             class: formData.class,
             section: formData.section
           })
@@ -210,6 +253,20 @@ export default function ManageStudents() {
         description="View, add, edit, and manage all students in the school."
         action={
           <div className="flex gap-2">
+            {hasOldIds && (
+              <Button
+                variant="outline"
+                onClick={handleFixIds}
+                disabled={fixing}
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              >
+                {fixing ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Fixing...</>
+                ) : (
+                  <>⚠️ Fix Student IDs</>
+                )}
+              </Button>
+            )}
             <Button variant="outline" onClick={handleExportCSV}>
               <Download className="mr-2 h-4 w-4" /> Export CSV
             </Button>
