@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, CheckCircle, GraduationCap, AlertCircle } from "lucide-react"
+import { Loader2, CheckCircle, GraduationCap, AlertCircle, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -23,6 +23,11 @@ export default function AcademicYearPage() {
   const [promotingYear, setPromotingYear] = useState<any>(null)
   const [targetYearId, setTargetYearId] = useState("")
   const [isPromoting, setIsPromoting] = useState(false)
+
+  // Available target years: not closed, and not the one being promoted from
+  const availableTargetYears = years.filter(
+    (y) => y.id !== promotingYear?.id && !y.isClosed
+  )
 
   // New Year Form
   const [newYear, setNewYear] = useState({
@@ -40,25 +45,27 @@ export default function AcademicYearPage() {
     setIsPromoting(true)
 
     try {
-      // 1. Fetch active students to promote
-      const studentRes = await fetch("/api/students")
+      // 1. Fetch students enrolled in the OLD (closed) year specifically
+      const studentRes = await fetch(`/api/academic-year/${promotingYear.id}/promote`)
       const studentData = await studentRes.json()
       
-      if (!studentRes.ok) throw new Error(studentData.error || "Failed to fetch student list")
+      if (!studentRes.ok || !studentData.success) {
+        throw new Error(studentData.error || "Failed to fetch student list for this year")
+      }
 
-      const studentsList = Array.isArray(studentData) ? studentData : []
-      if (studentsList.length === 0) {
-        toast({ title: "Information", description: "No active students found to promote." })
+      const studentYearList = Array.isArray(studentData.data) ? studentData.data : []
+      if (studentYearList.length === 0) {
+        toast({ title: "Information", description: "No active students found to promote for this year." })
         setIsPromoting(false)
         setPromoteOpen(false)
         return
       }
 
       // Generate default decisions: Promote everyone, keeping their current section
-      const decisions = studentsList.map((s: any) => ({
-        studentId: s.id,
+      const decisions = studentYearList.map((sy: any) => ({
+        studentId: sy.studentId,
         decision: "PROMOTE",
-        newSection: s.section || "A"
+        newSection: sy.section || "A"
       }))
 
       // 2. Call the promote API with confirmationToken
@@ -188,6 +195,20 @@ export default function AcademicYearPage() {
       const res = await fetch(`/api/academic-year/${id}/close`, { method: "POST" })
       if (!res.ok) throw new Error("Failed to close year")
       toast({ title: "Success", description: "Academic year closed" })
+      loadYears()
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    }
+  }
+
+  // ⚠️ DEV-ONLY: Delete an academic year and its StudentYear records
+  const handleDevDeleteYear = async (id: string, yearLabel: string) => {
+    if (!confirm(`[DEV] Delete academic year "${yearLabel}" and all its StudentYear records? This cannot be undone.`)) return
+    try {
+      const res = await fetch(`/api/academic-year/${id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to delete year")
+      toast({ title: "[Dev] Deleted", description: data.message })
       loadYears()
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" })
@@ -327,7 +348,7 @@ export default function AcademicYearPage() {
                       </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {!y.isCurrent && !y.isClosed && (
                         <Button variant="outline" size="sm" onClick={() => handleSetCurrent(y.id)}>
                           Set as Current
@@ -353,6 +374,20 @@ export default function AcademicYearPage() {
                           Promote Students
                         </Button>
                       )}
+
+                      {/* ⚠️ DEV-ONLY delete button — hidden in production */}
+                      {process.env.NODE_ENV === "development" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="[Dev Only] Delete this academic year"
+                          className="text-red-400 hover:text-red-700 hover:bg-red-50 border border-dashed border-red-300"
+                          onClick={() => handleDevDeleteYear(y.id, y.year)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Del (Dev)
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -375,24 +410,36 @@ export default function AcademicYearPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="targetYear">Target Academic Year</Label>
-              <Select value={targetYearId} onValueChange={setTargetYearId}>
-                <SelectTrigger id="targetYear" className="w-full">
-                  <SelectValue placeholder="Select target year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years
-                    .filter(y => y.id !== promotingYear?.id && !y.isClosed)
-                    .map(y => (
+            {availableTargetYears.length === 0 ? (
+              // ── No target years available ─────────────────────
+              <div className="flex items-start gap-3 text-sm text-red-700 bg-red-50 p-4 rounded-lg border border-red-200">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">No target academic year available</p>
+                  <p className="text-xs mt-1 leading-relaxed">
+                    You must <strong>create a new academic year</strong> (e.g. the next session) before you can promote students.
+                    Close this dialog, fill the <em>Add New Year</em> form on the left, and then try again.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // ── Target year selector ──────────────────────────
+              <div className="space-y-2">
+                <Label htmlFor="targetYear">Target Academic Year</Label>
+                <Select value={targetYearId} onValueChange={setTargetYearId}>
+                  <SelectTrigger id="targetYear" className="w-full">
+                    <SelectValue placeholder="Select target year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTargetYears.map(y => (
                       <SelectItem key={y.id} value={y.id}>
                         {y.year} {y.isCurrent ? "(Current)" : ""}
                       </SelectItem>
-                    ))
-                  }
-                </SelectContent>
-              </Select>
-            </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -411,7 +458,7 @@ export default function AcademicYearPage() {
             </Button>
             <Button 
               onClick={handlePromoteStudents} 
-              disabled={isPromoting || !targetYearId}
+              disabled={isPromoting || !targetYearId || availableTargetYears.length === 0}
               className="bg-purple-600 hover:bg-purple-700 text-white"
             >
               {isPromoting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
