@@ -31,6 +31,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# secrets & generated context (do not commit)
+api-keys.csv
+VERCEL_ENV_VARS.txt
+code_context.txt
+.context_cache/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
